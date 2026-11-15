@@ -122,6 +122,9 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
     <input id="acc" inputmode="numeric" autocomplete="off">
     <label>Tên chủ tài khoản</label>
     <input id="holder" autocomplete="off">
+    <b style="display:block;margin-top:16px">Bảng giá sản phẩm</b>
+    <textarea id="catalog" style="min-height:190px;font-size:14px"></textarea>
+    <p class="muted" style="margin:4px 0 0">Mỗi dòng: từ khóa, từ khóa = giá. Dòng trên được ưu tiên. Tin nhắn ghi "3 to 2 bé" sẽ tự tính theo bảng này.</p>
     <button class="primary big" id="saveCfg">Lưu</button>
     <p class="muted">Thông tin tài khoản chỉ lưu trong điện thoại của bạn.</p>
   </section>
@@ -226,13 +229,49 @@ function buildVietQR(o){
   return p+crc16(p);
 }
 const PHONE_RE=/(?:\+?84|0)[\s.\-]?[35789](?:[\s.\-]?\d){8}/;
+/* bảng giá: dòng trên được ưu tiên trước (vd "bé" trước "to", "me" trước "trộn") */
+const CATALOG_DEFAULT=`bé, nhỏ = 50k
+sốt me, me = 55k
+rút xương, trộn = 65k
+ớt xanh, cay = 75k
+lắc, cóc = 55k
+mắm = 55k
+to = 100k
+luộc, thảo quả = 100k`;
+let CATALOG=[];
+function setCatalog(txt){
+  CATALOG=String(txt||"").split("\n").map(l=>{
+    const m=l.split(/[=:]/);if(m.length<2)return null;
+    const kws=m[0].split(",").map(x=>x.trim().toLowerCase().normalize("NFC")).filter(Boolean);
+    let pr=m.slice(1).join(":").trim().toLowerCase().replace(/\s/g,""),v;
+    const k=pr.match(/^([\d.,]+)(k)?$/);if(!k)return null;
+    v=/^\d{1,3}([.,]\d{3})+$/.test(k[1])?parseInt(k[1].replace(/[.,]/g,""),10):parseFloat(k[1].replace(",","."));
+    if(k[2]||v<10000)v*=1000;
+    return kws.length?{kws,price:Math.round(v),re:new RegExp("(?<![\\p{L}\\p{M}])("+kws.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![\\p{L}\\p{M}])","iu")}:null;
+  }).filter(Boolean);
+}
+setCatalog(CATALOG_DEFAULT);
+function catalogPrice(seg){
+  const t=seg.normalize("NFC");
+  for(const c of CATALOG)if(c.re.test(t))return c.price;
+  return 0;
+}
+function catalogLine(line){
+  let sum=0,m;const re=/(?<![\p{L}\d.,\-\/])(\d{1,2})(?![\d.,\/])\s*([^\d\n]*)/gu;
+  while((m=re.exec(line))){
+    const q=parseInt(m[1],10),seg=m[2].split(/[;+]/)[0];
+    if(q<1||!seg.trim())continue;
+    const p=catalogPrice(seg);if(p)sum+=q*p;
+  }
+  return sum;
+}
 function parseOrder(text,defShip){
   if(defShip===undefined)defShip=SHIP_DEF;
   let phone="",rest=text;
   const m=text.match(PHONE_RE);
   if(m){let d=m[0].replace(/\D/g,"");if(d.startsWith("84"))d="0"+d.slice(2);phone=d;rest=text.replace(m[0]," ")}
   const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|l|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
-  let goods=0,ship=0,total=null,goodsTotal=null,lastEnd=0,mm;
+  let goods=0,ship=0,total=null,goodsTotal=null,lastEnd=0,mm;const priced=new Set();
   while((mm=re.exec(rest))){
     const raw=mm[1],unit=(mm[2]||"").toLowerCase();
     const thou=/^\d{1,3}([.,]\d{3})+$/.test(raw);
@@ -257,7 +296,12 @@ function parseOrder(text,defShip){
     const seg=rest.slice(lineStart,idx).split(/[,;+]/).pop();
     const qm=seg.match(/^\s*(\d{1,2})\s+\D*$/);
     const mult=qm?parseInt(qm[1],10):1;
+    if(!isShip)priced.add(lineStart);
     if(isShip)ship+=v;else if(isTotal)total=v;else if(isGoodsTotal)goodsTotal=v;else goods+=v*mult;
+  }
+  if(goodsTotal===null&&total===null){
+    let off=0;
+    rest.split("\n").forEach(line=>{if(!priced.has(off))goods+=catalogLine(line);off+=line.length+1});
   }
   if(ship===0)ship=defShip;
   if(goodsTotal!==null)goods=goodsTotal;
@@ -348,8 +392,10 @@ $("btnCfg").onclick=()=>$("cfg").classList.toggle("hidden");
 $("saveCfg").onclick=()=>{
   cfgQ={bankIdx:parseInt($("bankQ").value,10),account:$("accQ").value.replace(/\D/g,"")};
   cfgB={bankIdx:parseInt($("bank").value,10),account:$("acc").value.replace(/\D/g,""),holder:$("holder").value.trim()};
-  store("ship_cfgQ",cfgQ);store("ship_cfgB",cfgB);paintHdr();$("cfg").classList.add("hidden");
+  store("ship_cfgQ",cfgQ);store("ship_cfgB",cfgB);
+  const cat=$("catalog").value.trim()||CATALOG_DEFAULT;store("ship_catalog",cat);setCatalog(cat);paintHdr();$("cfg").classList.add("hidden");
 };
+setCatalog(load("ship_catalog",CATALOG_DEFAULT));$("catalog").value=load("ship_catalog",CATALOG_DEFAULT);
 paintHdr();
 if(!cfgQ.account)$("cfg").classList.remove("hidden");
 
