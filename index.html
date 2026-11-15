@@ -32,8 +32,8 @@ button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
 .muted{color:#6b7280;font-size:13px}
 .note{white-space:pre-wrap;font-size:13px;color:#555;background:#f7f8fa;border-radius:8px;padding:8px;margin:8px 0;max-height:84px;overflow:auto}
 .order.paid{opacity:.6}
-.order>.row:first-child{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.order.dragging{position:relative;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:.96}
+.arw{padding:6px 16px;font-size:14px;line-height:1;margin-left:6px}
+.arw:disabled{opacity:.3}
 .order.paid .total{text-decoration:line-through}
 .badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:#eceef1;color:#444;margin-top:2px}
 .badge.wait{background:#fff0d6;color:#8a4b00;font-weight:600}
@@ -331,7 +331,7 @@ function render(){
     const msg={n:"Chưa có đơn mới. Dán tin nhắn Zalo ở trên để thêm.",q:"Chưa có đơn nào ở tab QR. Bấm “Hiện QR” ở một đơn để chuyển sang đây.",m:"Chưa có đơn nào ở tab SMS. Bấm “Nhắn STK” ở một đơn để chuyển sang đây.",t:"Chưa có đơn thu tiền mặt. Bấm “Đã thu TM” ở một đơn để chuyển sang đây."}[tab];
     $("list").innerHTML='<div class="card muted">'+msg+"</div>";return;
   }
-  $("list").innerHTML=(tab==="t"?tmSummary(items):"")+items.map(([o,i])=>{
+  $("list").innerHTML=(tab==="t"?tmSummary(items):"")+items.map(([o,i],k)=>{
     const st=stageOf(o),compact=st!=="n",open=!compact||editing.has(o.id);
     const smsBtn=(t,a)=>'<a class="btn blue" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
     const sm=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
@@ -361,7 +361,7 @@ function render(){
     return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
       <div class="row" style="align-items:flex-start">
         <div style="flex:1 1 auto;min-width:0"><div class="phone">${o.phone?'<a href="tel:'+esc(o.phone)+'" style="display:inline-block;padding:2px 0">📞 '+esc(o.phone)+"</a>":"(chưa có SĐT)"}</div>${badge(o)}${compact?"":'<button data-a="edit" style="padding:2px 8px;font-size:12px;margin-left:6px">✎ SĐT</button>'}</div>
-        <div style="flex:0 0 auto"><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div></div>
+        <div style="flex:0 0 auto"><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div><div style="text-align:right;margin-top:6px"><button class="arw" data-a="up"${k===0?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1?" disabled":""}>▼</button></div></div>
       </div>
       ${edit}${thumbs}${acts}
     </div>`}).join("");
@@ -381,6 +381,7 @@ $("list").addEventListener("click",e=>{
   if(a==="show")startQr(i);
   else if(a==="cash"){o.cash=true;o.paid=true;saveOrders();render()}
   else if(a==="uncash"){o.cash=false;o.paid=false;saveOrders();render()}
+  else if(a==="up"||a==="down"){moveOrder(i,a==="up"?-1:1)}
   else if(a==="edit"){editing.has(o.id)?editing.delete(o.id):editing.add(o.id);render()}
   else if(a==="photo"){camTarget=o.id;$("cam").value="";$("cam").click()}
   else if(a==="msg"||a==="resend"){
@@ -531,62 +532,14 @@ $("paste").addEventListener("paste",()=>setTimeout(()=>{if($("paste").value.trim
 $("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.trim())$("confirm").onclick()},60));
 
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
-/* kéo thả đổi thứ tự đơn: giữ khoảng 0,35 giây ở dòng SĐT rồi kéo */
-function applyOrder(arr,dom){
-  const slots=dom.slice().sort((a,b)=>a-b),snap=dom.map(i=>arr[i]);
-  slots.forEach((pos,k)=>{arr[pos]=snap[k]});
+/* đổi thứ tự đơn bằng nút mũi tên */
+function moveOrder(i,dir){
+  const idx=[];orders.forEach((o,k)=>{if(inTab(o))idx.push(k)});
+  const p=idx.indexOf(i),q=p+dir;
+  if(p<0||q<0||q>=idx.length)return;
+  const a=idx[p],b=idx[q],t=orders[a];orders[a]=orders[b];orders[b]=t;
+  saveOrders();render();
 }
-(function(){
-  const list=$("list"),HD=".order>.row:first-child";
-  let timer=0,drag=null,sx=0,sy=0,pend=null,raf=0;
-  const cards=()=>Array.from(list.querySelectorAll(".order"));
-  function start(card,y){
-    const r=card.getBoundingClientRect();
-    drag={card,grab:y-r.top,y};
-    card.classList.add("dragging");
-    try{if(navigator.vibrate)navigator.vibrate(25)}catch(e){}
-  }
-  function place(y){
-    const c=drag.card;drag.y=y;
-    const others=cards().filter(x=>x!==c);
-    let before=null;
-    for(const o of others){const r=o.getBoundingClientRect();if(y<r.top+r.height/2){before=o;break}}
-    if(before){if(c.nextElementSibling!==before)list.insertBefore(c,before)}
-    else{const last=others[others.length-1];if(last&&c.previousElementSibling!==last)last.after(c)}
-    c.style.transform="none";
-    const nat=c.getBoundingClientRect().top;
-    c.style.transform="translateY("+(y-drag.grab-nat)+"px)";
-  }
-  function autoScroll(){
-    cancelAnimationFrame(raf);
-    const step=()=>{
-      if(!drag)return;
-      let d=0;if(drag.y<90)d=-14;else if(drag.y>window.innerHeight-90)d=14;
-      if(d){window.scrollBy(0,d);place(drag.y);raf=requestAnimationFrame(step)}
-    };
-    step();
-  }
-  function finish(){
-    const c=drag.card;c.classList.remove("dragging");c.style.transform="";
-    applyOrder(orders,cards().map(x=>+x.dataset.i));
-    drag=null;saveOrders();render();
-  }
-  list.addEventListener("touchstart",e=>{
-    const hd=e.target.closest(HD);
-    if(!hd||drag||e.touches.length!==1)return;
-    const t=e.touches[0];sx=t.clientX;sy=t.clientY;pend=hd.closest(".order");
-    clearTimeout(timer);timer=setTimeout(()=>{if(pend){start(pend,sy);pend=null}},350);
-  },{passive:true});
-  document.addEventListener("touchmove",e=>{
-    const t=e.touches[0];
-    if(drag){e.preventDefault();place(t.clientY);autoScroll();return}
-    if(pend&&(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10)){clearTimeout(timer);pend=null}
-  },{passive:false});
-  const end=e=>{clearTimeout(timer);pend=null;if(drag){if(e.cancelable)e.preventDefault();finish()}};
-  document.addEventListener("touchend",end,{passive:false});
-  document.addEventListener("touchcancel",end);
-  list.addEventListener("contextmenu",e=>{if(e.target.closest(HD))e.preventDefault()});
-})();
 
 render();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});
