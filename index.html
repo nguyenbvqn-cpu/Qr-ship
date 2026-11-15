@@ -657,21 +657,22 @@ function calcMoney(){
   const x=summary(),v={};Object.keys(MF).forEach(k=>v[k]=parseMoney(money[k]));
   v.start=denSum(money.cs);v.end=denSum(money.ce);
   const sw=orders.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
-  const diff=v.end-v.start-v.wq-v.ws,net=diff+x.g.qr.v+x.g.sms.v+smsDue-v.debt-v.buy;
-  return{x,v,diff,net,smsDue,smsDueN:sw.length};
+  const diff=v.end-v.start;
+  const balQ=x.g.qr.v-v.wq,balS=x.g.sms.v+smsDue-v.ws;
+  const net=diff+v.buy-v.debt+balQ+balS;
+  return{x,v,diff,net,smsDue,smsDueN:sw.length,balQ,balS};
 }
 function paintMoney(){
   const c0=calcMoney();$("denS").textContent=mk(c0.v.start);$("denE").textContent=mk(c0.v.end);
   const c=c0,R=(a,b,st)=>"<tr"+(st?' class="'+st+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>",sg=n=>(n<0?"−":"")+mk(Math.abs(n));
+  const sub=t=>'<div class="muted" style="font-size:12px;font-weight:400">'+t+"</div>";
   $("monBody").innerHTML='<table class="sumt">'+
-    R("Tiền mặt tăng (cuối − đầu"+(c.v.wq||c.v.ws?" − rút":"")+")",sg(c.diff))+
-    R("+ Tiền QR ("+c.x.g.qr.n+" đơn)",mk(c.x.g.qr.v))+
-    R("+ Tiền SMS đã ck ("+c.x.g.sms.n+" đơn)",mk(c.x.g.sms.v))+
-    R("+ Tiền SMS chưa ck ("+c.smsDueN+" đơn)",mk(c.smsDue))+
+    R("Tiền mặt (cuối − đầu)",sg(c.diff))+
+    R("+ Tiền mua đồ",mk(c.v.buy))+
     R("− Tiền nợ",mk(c.v.debt))+
-    R("− Tiền mua đồ",mk(c.v.buy))+
+    R("+ Số dư TK QR"+sub("thu "+mk(c.x.g.qr.v)+" ("+c.x.g.qr.n+" đơn)"+(c.v.wq?" − rút "+mk(c.v.wq):"")),sg(c.balQ))+
+    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+(c.v.ws?" − rút "+mk(c.v.ws):"")),sg(c.balS))+
     R("Được hưởng",sg(c.net),"big")+"</table>"+
-    ((c.v.wq||c.v.ws)?'<table class="sumt">'+R("Đã rút từ TK QR",mk(c.v.wq))+R("Còn trong TK QR (hôm nay)",sg(c.x.g.qr.v-c.v.wq))+R("Đã rút từ TK SMS",mk(c.v.ws))+R("Còn trong TK SMS (hôm nay)",sg(c.x.g.sms.v-c.v.ws))+"</table>":"")+
     '<p class="muted">Tham khảo: tiền mặt thu từ đơn hôm nay '+mk(c.x.g.tm.v)+" ("+c.x.g.tm.n+" đơn)."+(c.x.due.n?' <span style="color:#b42318">Còn '+c.x.due.n+" đơn chưa thu "+mk(c.x.due.v)+".</span>":"")+"</p>";
 }
 Object.keys(MF).forEach(k=>{
@@ -691,9 +692,10 @@ $("monCopy").onclick=async()=>{
   const t=["Tiền ngày "+d.getDate()+"/"+(d.getMonth()+1),
     "Đầu ngày: "+mk(c.v.start)+" ("+DENOMS.filter(d=>+(money.cs||{})[d]).map(d=>d+"k×"+money.cs[d]).join(", ")+")",
     "Cuối ngày: "+mk(c.v.end)+" ("+DENOMS.filter(d=>+(money.ce||{})[d]).map(d=>d+"k×"+money.ce[d]).join(", ")+")",
-    "QR: "+mk(c.x.g.qr.v),"SMS đã ck: "+mk(c.x.g.sms.v),"SMS chưa ck: "+mk(c.smsDue),
-    "Rút TK QR: "+mk(c.v.wq),"Rút TK SMS: "+mk(c.v.ws),
-    "Nợ: "+mk(c.v.debt),"Mua đồ: "+mk(c.v.buy),
+    "Mua đồ: "+mk(c.v.buy),"Nợ: "+mk(c.v.debt),
+    "Số dư TK QR: "+mk(c.balQ)+" (thu "+mk(c.x.g.qr.v)+" − rút "+mk(c.v.wq)+")",
+    "Số dư TK SMS: "+mk(c.balS)+" (đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+" − rút "+mk(c.v.ws)+")",
+
     "ĐƯỢC HƯỞNG: "+mk(c.net)].join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
