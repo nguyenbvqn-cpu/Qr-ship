@@ -416,6 +416,19 @@ $("tabN").onclick=()=>setTab("n");
 $("tabQ").onclick=()=>setTab("q");
 $("tabM").onclick=()=>setTab("m");
 $("tabT").onclick=()=>setTab("t");
+function tabSummary(items){
+  if(tab==="t")return tmSummary(items);
+  const os=items.map(x=>x[0]);if(!os.length)return "";
+  if(tab==="n"){
+    const g=os.reduce((a,o)=>a+(o.goods||0),0),sh=os.reduce((a,o)=>a+(o.ship||0),0);
+    return '<div class="card"><b>Tổng tiền hàng:</b> <span class="total" style="display:inline">'+fmt(g)+'đ</span> · '+os.length+' đơn<div class="muted">+ ship '+fmt(sh)+'đ = '+fmt(g+sh)+'đ</div></div>';
+  }
+  if(tab==="m"){
+    const tot=os.reduce((a,o)=>a+msgAmountOf(o),0),pd=os.filter(o=>o.paid),pv=pd.reduce((a,o)=>a+msgAmountOf(o),0);
+    return '<div class="card"><b>Đã ck:</b> <span class="total" style="display:inline">'+fmt(pv)+'đ</span> / '+fmt(tot)+'đ<div class="muted">'+pd.length+'/'+os.length+' đơn · còn chờ '+fmt(tot-pv)+'đ</div></div>';
+  }
+  return "";
+}
 function tmSummary(items){const sum=items.reduce((a,x)=>a+msgAmountOf(x[0]),0);return '<div class="card"><b>Tiền mặt đã thu:</b> <span class="total" style="display:inline">'+fmt(sum)+"đ</span> · "+items.length+" đơn</div>"}
 function render(){
   purge();
@@ -433,7 +446,7 @@ function render(){
     const msg={n:"Chưa có đơn mới. Dán tin nhắn Zalo ở trên để thêm.",q:"Chưa có đơn nào ở tab QR. Bấm “Hiện QR” ở một đơn để chuyển sang đây.",m:"Chưa có đơn nào ở tab SMS. Bấm “Nhắn STK” ở một đơn để chuyển sang đây.",t:"Chưa có đơn thu tiền mặt. Bấm “Đã thu TM” ở một đơn để chuyển sang đây."}[tab];
     $("list").innerHTML='<div class="card muted">'+msg+"</div>";return;
   }
-  $("list").innerHTML=(tab==="t"?tmSummary(items):"")+items.map(([o,i],k)=>{
+  $("list").innerHTML=tabSummary(items)+items.map(([o,i],k)=>{
     const st=stageOf(o),open=editing.has(o.id)||!o.phone;
     const B=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
     const S=(t,a,c)=>'<a class="btn '+(c||"blue")+'" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
