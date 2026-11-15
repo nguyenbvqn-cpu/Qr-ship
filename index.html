@@ -84,6 +84,11 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 #ov .nav button{flex:1;padding:14px}
 #dupOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:26;display:flex;align-items:flex-end;justify-content:center}
 #dupOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px}
+#monOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
+#monOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:92vh;overflow:auto}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+.mrow label{flex:1;margin:0;font-size:15px;color:inherit}
+.mrow input{flex:0 0 46%;text-align:right;font-size:17px;font-weight:600}
 #sumOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
 #sumOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:90vh;overflow:auto}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
@@ -97,7 +102,7 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 <body>
 <header>
   <div><h1>QR thu tiền ship</h1><small id="hdrSub"></small></div>
-  <div style="display:flex;gap:6px"><button id="btnSum">📊 Tổng</button><button id="btnCfg">⚙</button></div>
+  <div style="display:flex;gap:6px"><button id="btnMoney">💰 Tiền</button><button id="btnSum">📊 Tổng</button><button id="btnCfg">⚙</button></div>
 </header>
 <main>
   <div id="libWarn" class="warn hidden">Chưa tải được thư viện tạo QR. Hãy bật mạng và tải lại trang.</div>
@@ -163,6 +168,21 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
   <p id="dupBody" style="font-size:15px"></p>
   <div class="row" style="flex-wrap:wrap"><button class="danger big" id="dupAll">Vẫn thêm</button><button class="primary big" id="dupSkip">Bỏ đơn trùng</button></div>
   <button class="big" id="dupCancel">Hủy</button>
+</div></div>
+<div id="monOv" class="hidden"><div class="sheet">
+  <div class="row" style="align-items:center"><b style="font-size:18px">Tiền được hưởng hôm nay</b><button id="monClose" style="flex:0 0 auto">✕</button></div>
+  <div class="mrow"><label>Tiền mặt mang theo đầu ngày</label><input id="mStart" inputmode="text" placeholder="vd 500k"></div>
+  <div class="mrow"><label>Tiền mặt đếm cuối ngày</label><input id="mEnd" inputmode="text" placeholder="vd 1tr2"></div>
+  <div class="mrow"><label>Tiền nợ</label><input id="mDebt" inputmode="text" placeholder="0"></div>
+  <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300k+150k"></div>
+  <button class="big" id="wdBtn" style="margin-top:10px">🏧 Rút tiền</button>
+  <div id="wdBox" class="hidden">
+    <div class="mrow"><label>Rút từ tài khoản QR</label><input id="mWq" inputmode="text" placeholder="0"></div>
+    <div class="mrow"><label>Rút từ tài khoản SMS</label><input id="mWs" inputmode="text" placeholder="0"></div>
+  </div>
+  <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000 hoặc cộng nhiều khoản: 300k+150k.</p>
+  <div id="monBody"></div>
+  <button class="primary big" id="monCopy">Sao chép</button>
 </div></div>
 <div id="sumOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><b style="font-size:18px">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
@@ -532,6 +552,63 @@ async function copyPhone(num){
   try{await navigator.clipboard.writeText(num);toast("✓ Đã sao chép số "+num+". Dán vào bàn phím gọi hoặc ô tìm liên hệ.")}
   catch(e){toast("Không sao chép được. Số khách: "+num)}
 }
+
+/* tiền được hưởng: (cuối - đầu) + QR + SMS - nợ - mua đồ */
+function parseMoney(t){
+  return String(t||"").toLowerCase().split("+").reduce((sum,p)=>{
+    p=p.trim().replace(/\s/g,"");if(!p)return sum;
+    let m=p.match(/^(\d+)tr(\d{0,3})$/);
+    if(m)return sum+parseInt(m[1],10)*1e6+(m[2]?parseInt((m[2]+"00").slice(0,3),10)*1000:0);
+    m=p.match(/^(\d+(?:[.,]\d+)?)(tr|triệu|trieu)$/);if(m)return sum+Math.round(parseFloat(m[1].replace(",","."))*1e6);
+    m=p.match(/^([\d.,]+)(k|n|đ|d|vnd)?$/);if(!m)return sum;
+    let raw=m[1],v=/^\d{1,3}([.,]\d{3})+$/.test(raw)?parseInt(raw.replace(/[.,]/g,""),10):parseFloat(raw.replace(",","."));
+    if(m[2]==="k"||m[2]==="n")v*=1000;
+    else if(!m[2]&&v<10000)v*=1000;
+    return sum+Math.round(v);
+  },0);
+}
+let money=load("ship_money",{});
+if(money.day!==today())money={day:today(),start:"",end:"",debt:"",buy:"",wq:"",ws:""};
+const MF={start:"mStart",end:"mEnd",debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs"};
+$("wdBtn").onclick=()=>$("wdBox").classList.toggle("hidden");
+function calcMoney(){
+  const x=summary(),v={};Object.keys(MF).forEach(k=>v[k]=parseMoney(money[k]));
+  const diff=v.end-v.start-v.wq-v.ws,net=diff+x.g.qr.v+x.g.sms.v-v.debt-v.buy;
+  return{x,v,diff,net};
+}
+function paintMoney(){
+  const c=calcMoney(),R=(a,b,st)=>"<tr"+(st?' class="'+st+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>",sg=n=>(n<0?"−":"")+fmt(Math.abs(n))+"đ";
+  $("monBody").innerHTML='<table class="sumt">'+
+    R("Tiền mặt tăng (cuối − đầu"+(c.v.wq||c.v.ws?" − rút":"")+")",sg(c.diff))+
+    R("+ Tiền QR ("+c.x.g.qr.n+" đơn)",fmt(c.x.g.qr.v)+"đ")+
+    R("+ Tiền SMS ("+c.x.g.sms.n+" đơn)",fmt(c.x.g.sms.v)+"đ")+
+    R("− Tiền nợ",fmt(c.v.debt)+"đ")+
+    R("− Tiền mua đồ",fmt(c.v.buy)+"đ")+
+    R("Được hưởng",sg(c.net),"big")+"</table>"+
+    ((c.v.wq||c.v.ws)?'<table class="sumt">'+R("Đã rút từ TK QR",fmt(c.v.wq)+"đ")+R("Còn trong TK QR (hôm nay)",sg(c.x.g.qr.v-c.v.wq))+R("Đã rút từ TK SMS",fmt(c.v.ws)+"đ")+R("Còn trong TK SMS (hôm nay)",sg(c.x.g.sms.v-c.v.ws))+"</table>":"")+
+    '<p class="muted">Tham khảo: tiền mặt thu từ đơn hôm nay '+fmt(c.x.g.tm.v)+"đ ("+c.x.g.tm.n+" đơn)."+(c.x.due.n?' <span style="color:#b42318">Còn '+c.x.due.n+" đơn chưa thu "+fmt(c.x.due.v)+"đ.</span>":"")+"</p>";
+}
+Object.keys(MF).forEach(k=>{
+  $(MF[k]).addEventListener("input",e=>{money[k]=e.target.value;store("ship_money",money);paintMoney()});
+});
+$("btnMoney").onclick=()=>{
+  if(money.day!==today())money={day:today(),start:"",end:"",debt:"",buy:""};
+  Object.keys(MF).forEach(k=>$(MF[k]).value=money[k]||"");
+  $("wdBox").classList.toggle("hidden",!(money.wq||money.ws));
+  paintMoney();$("monOv").classList.remove("hidden");
+};
+$("monClose").onclick=()=>$("monOv").classList.add("hidden");
+$("monOv").addEventListener("click",e=>{if(e.target.id==="monOv")$("monOv").classList.add("hidden")});
+$("monCopy").onclick=async()=>{
+  const c=calcMoney(),d=new Date();
+  const t=["Tiền ngày "+d.getDate()+"/"+(d.getMonth()+1),
+    "Đầu ngày: "+fmt(c.v.start)+"đ","Cuối ngày: "+fmt(c.v.end)+"đ",
+    "QR: "+fmt(c.x.g.qr.v)+"đ","SMS: "+fmt(c.x.g.sms.v)+"đ",
+    "Rút TK QR: "+fmt(c.v.wq)+"đ","Rút TK SMS: "+fmt(c.v.ws)+"đ",
+    "Nợ: "+fmt(c.v.debt)+"đ","Mua đồ: "+fmt(c.v.buy)+"đ",
+    "ĐƯỢC HƯỞNG: "+fmt(c.net)+"đ"].join("\n");
+  try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
+};
 
 /* tổng kết cuối ngày */
 function kindOf(o){return o.cash?"tm":(o.msgSent?"sms":"qr")}
