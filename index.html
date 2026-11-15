@@ -82,6 +82,12 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 #ov .bank{font-size:14px;color:#555;text-align:center}
 #ov .nav{display:flex;gap:8px;width:100%;margin-top:auto;padding-top:8px}
 #ov .nav button{flex:1;padding:14px}
+#sumOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
+#sumOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:90vh;overflow:auto}
+.sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
+.sumt td{padding:8px 4px;border-bottom:1px solid #e3e5e8}
+.sumt td:last-child{text-align:right;font-weight:700}
+.sumt tr.big td{font-size:18px;color:#0b7a43;border-bottom:0}
 #toast{position:fixed;left:8px;right:8px;top:8px;z-index:30;background:#16181d;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;white-space:pre-wrap;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #toast button,#toast a.btn{padding:8px 10px;font-size:14px}
 </style>
@@ -89,7 +95,7 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 <body>
 <header>
   <div><h1>QR thu tiền ship</h1><small id="hdrSub"></small></div>
-  <button id="btnCfg">⚙ Tài khoản</button>
+  <div style="display:flex;gap:6px"><button id="btnSum">📊 Tổng</button><button id="btnCfg">⚙</button></div>
 </header>
 <main>
   <div id="libWarn" class="warn hidden">Chưa tải được thư viện tạo QR. Hãy bật mạng và tải lại trang.</div>
@@ -148,6 +154,11 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
 <div id="phOv" class="hidden"><img id="phImg" alt=""><div class="phbar"><span>Nhấn giữ ảnh để lưu vào máy</span><button class="danger" id="phDel">Xóa ảnh</button><button id="phClose">Đóng</button></div></div>
 
+<div id="sumOv" class="hidden"><div class="sheet">
+  <div class="row" style="align-items:center"><b style="font-size:18px">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
+  <div id="sumBody"></div>
+  <div class="row"><button class="primary big" id="sumCopy">Sao chép bảng tổng</button></div>
+</div></div>
 <div id="toast" class="hidden"><span id="toastTxt"></span> <button id="toastCopy">Sao chép lại</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';s.onerror=function(){var t=document.createElement('script');t.src='https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';document.head.appendChild(t)};document.head.appendChild(s)"></script>
@@ -465,6 +476,50 @@ async function copyPhone(num){
   try{await navigator.clipboard.writeText(num);toast("✓ Đã sao chép số "+num+". Dán vào bàn phím gọi hoặc ô tìm liên hệ.")}
   catch(e){toast("Không sao chép được. Số khách: "+num)}
 }
+
+/* tổng kết cuối ngày */
+function kindOf(o){return o.cash?"tm":(o.msgSent?"sms":"qr")}
+function recvAmount(o){return o.cash||o.msgSent?msgAmountOf(o):amountOf(o)}
+function summary(){
+  const g={qr:{n:0,v:0},sms:{n:0,v:0},tm:{n:0,v:0}},due={n:0,v:0};let ship=0,goods=0;
+  orders.forEach(o=>{
+    if(o.paid){const k=kindOf(o);g[k].n++;g[k].v+=recvAmount(o);ship+=o.ship||0;goods+=o.goods||0}
+    else{due.n++;due.v+=recvAmount(o)}
+  });
+  const tot=g.qr.v+g.sms.v+g.tm.v,cnt=g.qr.n+g.sms.n+g.tm.n;
+  return{g,due,ship,goods,tot,cnt};
+}
+function sumText(x){
+  const d=new Date(),L=(a,b)=>a+": "+b;
+  return ["Tổng kết ngày "+d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(),
+    L("QR ("+x.g.qr.n+" đơn)",fmt(x.g.qr.v)+"đ"),
+    L("SMS ("+x.g.sms.n+" đơn)",fmt(x.g.sms.v)+"đ"),
+    L("Tiền mặt ("+x.g.tm.n+" đơn)",fmt(x.g.tm.v)+"đ"),
+    L("TỔNG ĐÃ THU ("+x.cnt+" đơn)",fmt(x.tot)+"đ"),
+    L("Trong đó tiền hàng",fmt(x.goods)+"đ"),
+    L("Tiền ship",fmt(x.ship)+"đ")].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",fmt(x.due.v)+"đ")]:[]).join("\n");
+}
+function openSum(){
+  const x=summary(),R=(a,b,c)=>'<tr'+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
+  $("sumBody").innerHTML='<table class="sumt">'+
+    R("QR ("+x.g.qr.n+" đơn)",fmt(x.g.qr.v)+"đ")+
+    R("SMS ("+x.g.sms.n+" đơn)",fmt(x.g.sms.v)+"đ")+
+    R("Tiền mặt ("+x.g.tm.n+" đơn)",fmt(x.g.tm.v)+"đ")+
+    R("Tổng đã thu ("+x.cnt+" đơn)",fmt(x.tot)+"đ","big")+
+    "</table>"+'<table class="sumt">'+
+    R("Trong đó tiền hàng",fmt(x.goods)+"đ")+
+    R("Tiền ship",fmt(x.ship)+"đ")+
+    (x.due.n?R('<span style="color:#b42318">Chưa thu ('+x.due.n+" đơn)</span>",'<span style="color:#b42318">'+fmt(x.due.v)+"đ</span>"):"")+
+    "</table>"+'<p class="muted">QR tính cả 1đ lẻ. Đơn chưa thu không cộng vào tổng.</p>';
+  $("sumOv").classList.remove("hidden");
+}
+$("btnSum").onclick=openSum;
+$("sumClose").onclick=()=>$("sumOv").classList.add("hidden");
+$("sumOv").addEventListener("click",e=>{if(e.target.id==="sumOv")$("sumOv").classList.add("hidden")});
+$("sumCopy").onclick=async()=>{
+  const t=sumText(summary());
+  try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép bảng tổng.")}catch(e){toast(t)}
+};
 
 /* chụp ảnh đồ */
 let camTarget=null,phCur=null;
