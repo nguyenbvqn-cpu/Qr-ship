@@ -213,7 +213,8 @@ const EXTRA=1,SHIP_DEF=20000,SHIP_STEP=5000;
 const fmt=n=>Number(n||0).toLocaleString("vi-VN");
 const amountOf=o=>(o.goods||0)+(o.ship||0)+EXTRA;
 const msgAmountOf=o=>(o.goods||0)+(o.ship||0);
-const fmtK=v=>v>0&&v%1000===0?(v/1000)+"k":fmt(v)+"đ";
+const fmtK=v=>v>0&&v%1000===0?(v/1000).toLocaleString("vi-VN")+"k":fmt(v)+"\u0111";
+const mk=v=>{v=Math.round(v||0);if(v%1000===1)v-=1;return v===0?"0":(v%1000===0?(v/1000).toLocaleString("vi-VN")+"k":fmt(v)+"\u0111")};
 function tlv(id,val){return id+String(val.length).padStart(2,"0")+val}
 function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++){c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xFFFF}}return c.toString(16).toUpperCase().padStart(4,"0")}
 function stripVN(s){return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").replace(/[^A-Za-z0-9 \-]/g,"")}
@@ -413,7 +414,7 @@ $("add").onclick=()=>{
   const dup=[],seen=new Set();
   list.forEach(o=>{
     const old=orders.find(x=>(o.phone&&x.phone===o.phone)||noteText(x)===noteText(o));
-    if(old)dup.push({o,txt:esc(o.phone||"?")+" đã có ở tab "+TABNAME[stageOf(old)]+" ("+fmt(shownAmount(old))+"đ"+(old.paid?", đã thu":"")+")"});
+    if(old)dup.push({o,txt:esc(o.phone||"?")+" đã có ở tab "+TABNAME[stageOf(old)]+" ("+mk(shownAmount(old))+(old.paid?", đã thu":"")+")"});
     else if(o.phone&&seen.has(o.phone))dup.push({o,txt:esc(o.phone)+" bị dán 2 lần trong lần này"});
     if(o.phone)seen.add(o.phone);
   });
@@ -469,15 +470,15 @@ function tabSummary(items){
   const os=items.map(x=>x[0]);if(!os.length)return "";
   if(tab==="n"){
     const g=os.reduce((a,o)=>a+(o.goods||0),0),sh=os.reduce((a,o)=>a+(o.ship||0),0);
-    return '<div class="card"><b>Tổng tiền hàng:</b> <span class="total" style="display:inline">'+fmt(g)+'đ</span> · '+os.length+' đơn<div class="muted">+ ship '+fmt(sh)+'đ = '+fmt(g+sh)+'đ</div></div>';
+    return '<div class="card"><b>Tổng tiền hàng:</b> <span class="total" style="display:inline">'+mk(g)+'</span> · '+os.length+' đơn<div class="muted">+ ship '+mk(sh)+' = '+mk(g+sh)+'</div></div>';
   }
   if(tab==="m"){
     const tot=os.reduce((a,o)=>a+msgAmountOf(o),0),pd=os.filter(o=>o.paid),pv=pd.reduce((a,o)=>a+msgAmountOf(o),0);
-    return '<div class="card"><b>Đã ck:</b> <span class="total" style="display:inline">'+fmt(pv)+'đ</span> / '+fmt(tot)+'đ<div class="muted">'+pd.length+'/'+os.length+' đơn · còn chờ '+fmt(tot-pv)+'đ</div></div>';
+    return '<div class="card"><b>Đã ck:</b> <span class="total" style="display:inline">'+mk(pv)+'</span> / '+mk(tot)+'<div class="muted">'+pd.length+'/'+os.length+' đơn · còn chờ '+mk(tot-pv)+'</div></div>';
   }
   return "";
 }
-function tmSummary(items){const sum=items.reduce((a,x)=>a+msgAmountOf(x[0]),0);return '<div class="card"><b>Tiền mặt đã thu:</b> <span class="total" style="display:inline">'+fmt(sum)+"đ</span> · "+items.length+" đơn</div>"}
+function tmSummary(items){const sum=items.reduce((a,x)=>a+msgAmountOf(x[0]),0);return '<div class="card"><b>Tiền mặt đã thu:</b> <span class="total" style="display:inline">'+mk(sum)+"</span> · "+items.length+" đơn</div>"}
 function render(){
   purge();
   const cn=orders.filter(o=>stageOf(o)==="n").length,cq=orders.filter(o=>stageOf(o)==="q").length;
@@ -512,13 +513,13 @@ function render(){
     const phone=o.phone?'<a href="tel:'+esc(o.phone)+'">📞 '+esc(o.phone)+"</a>":'<span class="muted">Chưa có SĐT</span>';
     const panel=open?`<div class="panel">
         <div class="row">
-          <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
+          <div><label>Tiền hàng</label><input data-f="goods" inputmode="text" value="${mk(o.goods||0)}" placeholder="vd 155k, 20k"></div>
           <div><label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}"></div>
         </div>
         <div class="acts" style="margin-top:8px">${sec}${B("del","Xóa","danger")}</div>
       </div>`:"";
     return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
-      <div class="hd"><div class="phone">${phone}</div><div class="total">${fmt(shownAmount(o))}đ</div></div>
+      <div class="hd"><div class="phone">${phone}</div><div class="total">${mk(shownAmount(o))}</div></div>
       ${bd?'<div style="margin-top:2px">'+bd+"</div>":""}
       ${nt?'<div class="note'+(open?"":" clamp")+'">'+esc(nt)+"</div>":""}
       <div class="line">
@@ -531,12 +532,13 @@ function render(){
       ${panel}
     </div>`}).join("");
 }
+$("list").addEventListener("change",e=>{if(e.target.dataset.f==="goods")render()});
 $("list").addEventListener("input",e=>{
   const f=e.target.dataset.f;if(!f)return;
   const card=e.target.closest(".order"),o=orders[+card.dataset.i];
   if(f==="phone")o.phone=e.target.value.replace(/\D/g,"");
-  else o[f]=parseInt(e.target.value.replace(/\D/g,""),10)||0;
-  saveOrders();card.querySelector(".total").textContent=fmt(shownAmount(o))+"đ";
+  else o[f]=parseMoney(e.target.value);
+  saveOrders();card.querySelector(".total").textContent=mk(shownAmount(o));
 });
 $("list").addEventListener("click",e=>{
   if(e.target.dataset.copy){copyPhone(e.target.dataset.copy);return}
@@ -589,7 +591,7 @@ function showQr(id){
   const amount=amountOf(o);
   $("ovQr").innerHTML=qrSvg(buildVietQR({bin:qa.bin,account:qa.account,amount,content:qrContent(o)}));
   $("ovIdx").textContent="Đơn "+(cur+1)+"/"+ovIds.length+(o.paid?" · ĐÃ THU":"");
-  $("ovAmt").textContent=fmt(amount)+"đ";
+  $("ovAmt").textContent=fmt(amount)+"\u0111";
   $("ovContent").textContent="Nội dung: "+qrContent(o);
   $("ovBank").textContent=qa.name+" · "+qa.account;
   $("ovPaid").textContent=o.paid?"Bỏ đã thu":"Đã nhận tiền ✓";
@@ -601,7 +603,7 @@ $("ovNext").onclick=()=>{if(cur<ovIds.length-1)showQr(ovIds[cur+1])};
 $("ovPaid").onclick=()=>{
   const o=orders.find(q=>q.id===ovIds[cur]);if(!o)return;
   o.paid=!o.paid;saveOrders();
-  if(o.paid){$("ov").classList.add("hidden");setTab("n");window.scrollTo(0,0);toast("✓ Đã thu "+fmt(amountOf(o))+"đ đơn "+(o.phone||""))}
+  if(o.paid){$("ov").classList.add("hidden");setTab("n");window.scrollTo(0,0);toast("✓ Đã thu "+mk(amountOf(o))+" đơn "+(o.phone||""))}
   else showQr(o.id);
 };
 let tx=0;
@@ -616,7 +618,8 @@ async function copyPhone(num){
 
 /* tiền được hưởng: (cuối - đầu) + QR + SMS - nợ - mua đồ */
 function parseMoney(t){
-  return String(t||"").toLowerCase().split("+").reduce((sum,p)=>{
+  t=String(t||"").toLowerCase().replace(/(\d),(\d{3})(?!\d)/g,"$1$2").replace(/(\d),(\d)\s*(tr)/g,"$1.$2$3");
+  return t.split(/[+,;]/).reduce((sum,p)=>{
     p=p.trim().replace(/\s/g,"");if(!p)return sum;
     let m=p.match(/^(\d+)tr(\d{0,3})$/);
     if(m)return sum+parseInt(m[1],10)*1e6+(m[2]?parseInt((m[2]+"00").slice(0,3),10)*1000:0);
@@ -638,16 +641,16 @@ function calcMoney(){
   return{x,v,diff,net};
 }
 function paintMoney(){
-  const c=calcMoney(),R=(a,b,st)=>"<tr"+(st?' class="'+st+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>",sg=n=>(n<0?"−":"")+fmt(Math.abs(n))+"đ";
+  const c=calcMoney(),R=(a,b,st)=>"<tr"+(st?' class="'+st+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>",sg=n=>(n<0?"−":"")+mk(Math.abs(n));
   $("monBody").innerHTML='<table class="sumt">'+
     R("Tiền mặt tăng (cuối − đầu"+(c.v.wq||c.v.ws?" − rút":"")+")",sg(c.diff))+
-    R("+ Tiền QR ("+c.x.g.qr.n+" đơn)",fmt(c.x.g.qr.v)+"đ")+
-    R("+ Tiền SMS ("+c.x.g.sms.n+" đơn)",fmt(c.x.g.sms.v)+"đ")+
-    R("− Tiền nợ",fmt(c.v.debt)+"đ")+
-    R("− Tiền mua đồ",fmt(c.v.buy)+"đ")+
+    R("+ Tiền QR ("+c.x.g.qr.n+" đơn)",mk(c.x.g.qr.v))+
+    R("+ Tiền SMS ("+c.x.g.sms.n+" đơn)",mk(c.x.g.sms.v))+
+    R("− Tiền nợ",mk(c.v.debt))+
+    R("− Tiền mua đồ",mk(c.v.buy))+
     R("Được hưởng",sg(c.net),"big")+"</table>"+
-    ((c.v.wq||c.v.ws)?'<table class="sumt">'+R("Đã rút từ TK QR",fmt(c.v.wq)+"đ")+R("Còn trong TK QR (hôm nay)",sg(c.x.g.qr.v-c.v.wq))+R("Đã rút từ TK SMS",fmt(c.v.ws)+"đ")+R("Còn trong TK SMS (hôm nay)",sg(c.x.g.sms.v-c.v.ws))+"</table>":"")+
-    '<p class="muted">Tham khảo: tiền mặt thu từ đơn hôm nay '+fmt(c.x.g.tm.v)+"đ ("+c.x.g.tm.n+" đơn)."+(c.x.due.n?' <span style="color:#b42318">Còn '+c.x.due.n+" đơn chưa thu "+fmt(c.x.due.v)+"đ.</span>":"")+"</p>";
+    ((c.v.wq||c.v.ws)?'<table class="sumt">'+R("Đã rút từ TK QR",mk(c.v.wq))+R("Còn trong TK QR (hôm nay)",sg(c.x.g.qr.v-c.v.wq))+R("Đã rút từ TK SMS",mk(c.v.ws))+R("Còn trong TK SMS (hôm nay)",sg(c.x.g.sms.v-c.v.ws))+"</table>":"")+
+    '<p class="muted">Tham khảo: tiền mặt thu từ đơn hôm nay '+mk(c.x.g.tm.v)+" ("+c.x.g.tm.n+" đơn)."+(c.x.due.n?' <span style="color:#b42318">Còn '+c.x.due.n+" đơn chưa thu "+mk(c.x.due.v)+".</span>":"")+"</p>";
 }
 Object.keys(MF).forEach(k=>{
   $(MF[k]).addEventListener("input",e=>{money[k]=e.target.value;store("ship_money",money);paintMoney()});
@@ -663,11 +666,11 @@ $("monOv").addEventListener("click",e=>{if(e.target.id==="monOv")$("monOv").clas
 $("monCopy").onclick=async()=>{
   const c=calcMoney(),d=new Date();
   const t=["Tiền ngày "+d.getDate()+"/"+(d.getMonth()+1),
-    "Đầu ngày: "+fmt(c.v.start)+"đ","Cuối ngày: "+fmt(c.v.end)+"đ",
-    "QR: "+fmt(c.x.g.qr.v)+"đ","SMS: "+fmt(c.x.g.sms.v)+"đ",
-    "Rút TK QR: "+fmt(c.v.wq)+"đ","Rút TK SMS: "+fmt(c.v.ws)+"đ",
-    "Nợ: "+fmt(c.v.debt)+"đ","Mua đồ: "+fmt(c.v.buy)+"đ",
-    "ĐƯỢC HƯỞNG: "+fmt(c.net)+"đ"].join("\n");
+    "Đầu ngày: "+mk(c.v.start),"Cuối ngày: "+mk(c.v.end),
+    "QR: "+mk(c.x.g.qr.v),"SMS: "+mk(c.x.g.sms.v),
+    "Rút TK QR: "+mk(c.v.wq),"Rút TK SMS: "+mk(c.v.ws),
+    "Nợ: "+mk(c.v.debt),"Mua đồ: "+mk(c.v.buy),
+    "ĐƯỢC HƯỞNG: "+mk(c.net)].join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
 
@@ -686,24 +689,24 @@ function summary(){
 function sumText(x){
   const d=new Date(),L=(a,b)=>a+": "+b;
   return ["Tổng kết ngày "+d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(),
-    L("QR ("+x.g.qr.n+" đơn)",fmt(x.g.qr.v)+"đ"),
-    L("SMS ("+x.g.sms.n+" đơn)",fmt(x.g.sms.v)+"đ"),
-    L("Tiền mặt ("+x.g.tm.n+" đơn)",fmt(x.g.tm.v)+"đ"),
-    L("TỔNG ĐÃ THU ("+x.cnt+" đơn)",fmt(x.tot)+"đ"),
-    L("Trong đó tiền hàng",fmt(x.goods)+"đ"),
-    L("Tiền ship",fmt(x.ship)+"đ")].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",fmt(x.due.v)+"đ")]:[]).join("\n");
+    L("QR ("+x.g.qr.n+" đơn)",mk(x.g.qr.v)),
+    L("SMS ("+x.g.sms.n+" đơn)",mk(x.g.sms.v)),
+    L("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v)),
+    L("TỔNG ĐÃ THU ("+x.cnt+" đơn)",mk(x.tot)),
+    L("Trong đó tiền hàng",mk(x.goods)),
+    L("Tiền ship",mk(x.ship))].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",mk(x.due.v))]:[]).join("\n");
 }
 function openSum(){
   const x=summary(),R=(a,b,c)=>'<tr'+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
   $("sumBody").innerHTML='<table class="sumt">'+
-    R("QR ("+x.g.qr.n+" đơn)",fmt(x.g.qr.v)+"đ")+
-    R("SMS ("+x.g.sms.n+" đơn)",fmt(x.g.sms.v)+"đ")+
-    R("Tiền mặt ("+x.g.tm.n+" đơn)",fmt(x.g.tm.v)+"đ")+
-    R("Tổng đã thu ("+x.cnt+" đơn)",fmt(x.tot)+"đ","big")+
+    R("QR ("+x.g.qr.n+" đơn)",mk(x.g.qr.v))+
+    R("SMS ("+x.g.sms.n+" đơn)",mk(x.g.sms.v))+
+    R("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v))+
+    R("Tổng đã thu ("+x.cnt+" đơn)",mk(x.tot),"big")+
     "</table>"+'<table class="sumt">'+
-    R("Trong đó tiền hàng",fmt(x.goods)+"đ")+
-    R("Tiền ship",fmt(x.ship)+"đ")+
-    (x.due.n?R('<span style="color:#b42318">Chưa thu ('+x.due.n+" đơn)</span>",'<span style="color:#b42318">'+fmt(x.due.v)+"đ</span>"):"")+
+    R("Trong đó tiền hàng",mk(x.goods))+
+    R("Tiền ship",mk(x.ship))+
+    (x.due.n?R('<span style="color:#b42318">Chưa thu ('+x.due.n+" đơn)</span>",'<span style="color:#b42318">'+mk(x.due.v)+"</span>"):"")+
     "</table>"+'<p class="muted">QR tính cả 1đ lẻ. Đơn chưa thu không cộng vào tổng.</p>';
   $("sumOv").classList.remove("hidden");
 }
@@ -773,17 +776,17 @@ $("confirm").onclick=()=>{
   const r=matchBank(t,scope),out=[];
   r.done.forEach(x=>{
     const o=orders.find(q=>q.id===x.id);o.paid=true;
-    out.push('<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+fmt(x.amount)+"đ"+(x.kind==="amtonly"?" (khớp theo số tiền)":"")+"</div>");
+    out.push('<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+mk(x.amount)+(x.kind==="amtonly"?" (khớp theo số tiền)":"")+"</div>");
   });
   r.ambiguous.forEach(g=>{
-    out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+fmt(g.amount)+"đ, không thấy SĐT hay tên khách trong tin. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{
+    out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+mk(g.amount)+", không thấy SĐT hay tên khách trong tin. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{
       const o=orders.find(q=>q.id===id),hh=o.msgAt?new Date(o.msgAt):null;
       const when=hh?" · nhắn lúc "+String(hh.getHours()).padStart(2,"0")+":"+String(hh.getMinutes()).padStart(2,"0"):"";
       const line=(noteText(o).split("\n")[0]||"").slice(0,40);
       return '<button data-pick="'+id+'" style="display:block;width:100%;text-align:left;margin-top:6px"><b>'+esc(o.phone||"?")+"</b>"+when+'<br><small class="muted" style="pointer-events:none">'+esc(line)+"</small></button>";
     }).join(""));
   });
-  r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT hoặc tên khách của đơn '+esc(x.phone)+" nhưng số tiền không khớp (cần "+fmt(x.amount)+"đ). Chưa xác nhận.</div>"));
+  r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT hoặc tên khách của đơn '+esc(x.phone)+" nhưng số tiền không khớp (cần "+mk(x.amount)+"). Chưa xác nhận.</div>"));
   if(!out.length)out.push('<div class="bad">Không có số tiền nào khớp đơn chưa thu ở tab này. Kiểm tra lại số tiền hoặc tab.</div>');
   $("res").innerHTML=out.join("");
   if(r.done.length||r.ambiguous.length)$("bankMsg").value="";
@@ -792,7 +795,7 @@ $("confirm").onclick=()=>{
 $("res").addEventListener("click",e=>{
   const pb=e.target.closest&&e.target.closest("[data-pick]");if(!pb)return;const id=pb.dataset.pick;
   const o=orders.find(q=>String(q.id)===id);
-  if(o){o.paid=true;saveOrders();$("res").innerHTML='<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+fmt(msgAmountOf(o))+"đ</div>"}
+  if(o){o.paid=true;saveOrders();$("res").innerHTML='<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+mk(msgAmountOf(o))+"</div>"}
   render();
 });
 
