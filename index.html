@@ -26,7 +26,7 @@ button.danger{background:#fde8e8;color:#b42318}
 button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
 .row{display:flex;gap:8px}
 .row>*{flex:1}
-.phone{font-size:22px;font-weight:700;letter-spacing:.5px}
+.phone{font-size:21px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
 .phone a{color:inherit;text-decoration:none}
 .total{font-size:20px;font-weight:700;color:#0b7a43;text-align:right}
 .muted{color:#6b7280;font-size:13px}
@@ -51,7 +51,7 @@ button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
 .tab{flex:1;padding:12px 2px;font-weight:600;background:#e6e8ec;font-size:14px}
 button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .tab.on{background:#0b7a43;color:#fff}
-.smrow button{padding:8px 6px;font-size:14px}
+.smrow button{padding:8px 4px;font-size:14px;white-space:nowrap}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ccd0d6}
 #phOv{position:fixed;inset:0;background:#000;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px}
@@ -292,6 +292,7 @@ $("clearAll").onclick=()=>{
   setTimeout(()=>{$("clearAll").textContent="Xóa hết đơn hôm nay"},4000);
 };
 
+function noteText(o){return String(o.note||"").replace(PHONE_RE,"").split("\n").map(x=>x.trim()).filter(Boolean).join("\n")}
 let tab=load("ship_tab","n");
 const editing=new Set();
 let photos=load("ship_photos",{});
@@ -341,26 +342,26 @@ function render(){
       acts='<div class="row">'+smsBtn("Nhắn lại","resend")+paidBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("photo","📷 Chụp ảnh","blue")+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
       extra='<div class="row smrow" style="margin-top:8px">'+sm("show","Hiện QR")+sm("back","Về Mới")+"</div>";
     }else if(st==="q"){
-      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row" style="margin-top:6px">'+paidBtn.replace('class="primary"','')+cashBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
+      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row smrow" style="margin-top:6px">'+paidBtn.replace('class="primary"','')+cashBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
       extra='<div class="row smrow" style="margin-top:8px">'+sm("back","Về Mới")+"</div>";
     }else if(st==="t"){
       acts='<div class="row"><button class="primary" data-a="uncash">Bỏ thu TM</button></div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
     }else{
-      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row" style="margin-top:8px">'+paidBtn.replace('class="primary"','')+cashBtn+'<button class="danger" data-a="del">Xóa</button></div>';
+      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row smrow" style="margin-top:8px">'+paidBtn.replace('class="primary"','')+cashBtn+'<button class="danger" data-a="del">Xóa</button></div>';
     }
     const ph=(photos[String(o.id)]||[]);
     const thumbs=(st==="m"&&ph.length)?'<div class="thumbs">'+ph.map((u,k)=>'<img src="'+u+'" data-ph="'+o.id+"|"+k+'" alt="ảnh">').join("")+"</div>":"";
+    const showPhone=compact?open:(!o.phone||editing.has(o.id));
+    const nt=noteText(o);
     const edit=open?`<div class="row">
         <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
         <div><label>Tiền ship</label><div class="stepper"><button data-a="shipdn">−</button><b>${fmt(o.ship)}</b><button data-a="shipup">+</button></div></div>
-      </div>
-      <label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}">
-      <div class="note">${esc(o.note)}</div>`+extra:"";
+      </div>`+(showPhone?`<label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}">`:"")+(nt?`<div class="note">${esc(nt)}</div>`:"")+extra:"";
     const sub=compact?"hàng "+fmtK(o.goods||0)+" + ship "+fmtK(o.ship||0):(o.msgSent?"không cộng lẻ":"đã +1đ lẻ");
     return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
       <div class="row" style="align-items:flex-start">
-        <div><div class="phone">${o.phone?'<a href="tel:'+esc(o.phone)+'" style="display:inline-block;padding:2px 0">📞 '+esc(o.phone)+"</a>":"(chưa có SĐT)"}</div>${badge(o)}</div>
-        <div><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div></div>
+        <div style="flex:1 1 auto;min-width:0"><div class="phone">${o.phone?'<a href="tel:'+esc(o.phone)+'" style="display:inline-block;padding:2px 0">📞 '+esc(o.phone)+"</a>":"(chưa có SĐT)"}</div>${badge(o)}${compact?"":'<button data-a="edit" style="padding:2px 8px;font-size:12px;margin-left:6px">✎ SĐT</button>'}</div>
+        <div style="flex:0 0 auto"><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div></div>
       </div>
       ${edit}${thumbs}${acts}
     </div>`}).join("");
