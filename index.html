@@ -357,7 +357,7 @@ function render(){
   ["N","Q","M","T"].forEach(k=>$("tab"+k).classList.toggle("on",tab===k.toLowerCase()));
   $("confBox").classList.toggle("hidden",tab!=="m");
   $("clearAll").classList.toggle("hidden",!orders.length);
-  const items=orders.map((o,i)=>[o,i]).filter(x=>inTab(x[0]));
+  const items=tabIdx().map(i=>[orders[i],i]);
   if(!items.length){
     const msg={n:"Chưa có đơn mới. Dán tin nhắn Zalo ở trên để thêm.",q:"Chưa có đơn nào ở tab QR. Bấm “Hiện QR” ở một đơn để chuyển sang đây.",m:"Chưa có đơn nào ở tab SMS. Bấm “Nhắn STK” ở một đơn để chuyển sang đây.",t:"Chưa có đơn thu tiền mặt. Bấm “Đã thu TM” ở một đơn để chuyển sang đây."}[tab];
     $("list").innerHTML='<div class="card muted">'+msg+"</div>";return;
@@ -392,7 +392,7 @@ function render(){
       <div class="line">
         <div class="stepper sm"><button data-a="shipdn">−</button><b>ship ${fmtK(o.ship||0)}</b><button data-a="shipup">+</button></div>
         <span class="muted">hàng ${fmtK(o.goods||0)}</span>
-        <span class="arws"><button class="arw" data-a="up"${k===0?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1?" disabled":""}>▼</button></span>
+        <span class="arws"><button class="arw" data-a="up"${k===0||!!items[k-1][0].paid!==!!o.paid?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1||!!items[k+1][0].paid!==!!o.paid?" disabled":""}>▼</button></span>
       </div>
       ${thumbs}
       <div class="acts">${main}</div>
@@ -444,7 +444,7 @@ function qrSvg(str){
 let ovIds=[];
 const qrContent=o=>"QR chan ga - "+(o.phone||"");
 function startQr(i){
-  ovIds=(tab==="m"?[orders[i]]:orders.filter(inTab)).map(o=>o.id);
+  ovIds=(tab==="m"?[orders[i]]:tabIdx().map(j=>orders[j])).map(o=>o.id);
   showQr(orders[i].id);
 }
 function showQr(id){
@@ -611,11 +611,16 @@ $("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.
 
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
 /* đổi thứ tự đơn bằng nút mũi tên */
-function moveOrder(i,dir){
+/* đơn chưa thu lên đầu, đã thu xuống dưới (giữ thứ tự trong từng nhóm) */
+function tabIdx(){
   const idx=[];orders.forEach((o,k)=>{if(inTab(o))idx.push(k)});
+  return idx.filter(k=>!orders[k].paid).concat(idx.filter(k=>orders[k].paid));
+}
+function moveOrder(i,dir){
+  const idx=tabIdx();
   const p=idx.indexOf(i),q=p+dir;
   if(p<0||q<0||q>=idx.length)return;
-  const a=idx[p],b=idx[q],t=orders[a];orders[a]=orders[b];orders[b]=t;
+  const a=idx[p],b=idx[q],t=orders[a];if(!!orders[a].paid!==!!orders[b].paid)return;orders[a]=orders[b];orders[b]=t;
   saveOrders();render();
 }
 
