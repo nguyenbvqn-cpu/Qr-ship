@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR thu tiền ship</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b7a43">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f4f5f7;color:#16181d;font-size:16px;line-height:1.4}
+header{background:#0b7a43;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+header h1{margin:0;font-size:18px}
+header small{display:block;color:#d6f0e0;font-size:12px}
+main{max-width:560px;margin:0 auto;padding:12px}
+.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+label{display:block;font-size:13px;color:#555;margin:8px 0 4px}
+input,select,textarea{width:100%;font:inherit;padding:10px;border:1px solid #ccd0d6;border-radius:8px;background:#fff}
+textarea{min-height:100px;resize:vertical}
+button,a.btn{font:inherit;border:0;border-radius:10px;padding:11px 14px;background:#e6e8ec;color:#16181d;cursor:pointer;text-decoration:none;text-align:center;display:inline-block}
+button.primary,a.btn.primary{background:#0b7a43;color:#fff;font-weight:600}
+button.blue{background:#1f5fd6;color:#fff;font-weight:600}
+button.danger{background:#fde8e8;color:#b42318}
+button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.phone{font-size:22px;font-weight:700;letter-spacing:.5px}
+.phone a{color:inherit;text-decoration:none}
+.total{font-size:20px;font-weight:700;color:#0b7a43;text-align:right}
+.muted{color:#6b7280;font-size:13px}
+.note{white-space:pre-wrap;font-size:13px;color:#555;background:#f7f8fa;border-radius:8px;padding:8px;margin:8px 0;max-height:84px;overflow:auto}
+.order.paid{opacity:.6}
+.order.paid .total{text-decoration:line-through}
+.badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:#eceef1;color:#444;margin-top:2px}
+.badge.wait{background:#fff0d6;color:#8a4b00;font-weight:600}
+.badge.ok{background:#d9f3e3;color:#0b7a43;font-weight:600}
+.warn{background:#fff4e5;color:#8a4b00;padding:10px;border-radius:8px;margin-bottom:12px;font-size:14px}
+.warn b{display:block}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:44px;padding:10px 0;font-size:20px;font-weight:700}
+.stepper b{flex:1;text-align:center}
+.res{font-size:14px;margin-top:8px}
+.res div{padding:6px 8px;border-radius:8px;margin-top:4px;background:#f3f4f6}
+.res .ok{background:#d9f3e3;color:#0b5c32}
+.res .bad{background:#fde8e8;color:#b42318}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tab{flex:1;padding:12px 2px;font-weight:600;background:#e6e8ec;font-size:14px}
+button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
+.tab.on{background:#0b7a43;color:#fff}
+.smrow button{padding:8px 6px;font-size:14px}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ccd0d6}
+#phOv{position:fixed;inset:0;background:#000;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px}
+#phOv img{max-width:100%;max-height:78vh;object-fit:contain}
+#phOv .phbar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;justify-content:center;color:#ccc;font-size:13px}
+.hidden{display:none!important}
+#ov{position:fixed;inset:0;background:#fff;z-index:10;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:pan-y}
+#ov .top{width:100%;display:flex;justify-content:space-between;align-items:center}
+#ov .qr{width:min(92vw,62vh);aspect-ratio:1;margin:6px 0}
+#ov .qr svg{width:100%;height:100%;display:block}
+#ov .amt{font-size:34px;font-weight:800;color:#0b7a43}
+#ov .content{font-size:20px;font-weight:700}
+#ov .bank{font-size:14px;color:#555;text-align:center}
+#ov .nav{display:flex;gap:8px;width:100%;margin-top:auto;padding-top:8px}
+#ov .nav button{flex:1;padding:14px}
+#toast{position:fixed;left:8px;right:8px;top:8px;z-index:30;background:#16181d;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;white-space:pre-wrap;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#toast button,#toast a.btn{padding:8px 10px;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>QR thu tiền ship</h1><small id="hdrSub"></small></div>
+  <button id="btnCfg">⚙ Tài khoản</button>
+</header>
+<main>
+  <div id="libWarn" class="warn hidden">Chưa tải được thư viện tạo QR. Hãy bật mạng và tải lại trang.</div>
+
+  <section id="cfg" class="card hidden">
+    <b>Tài khoản nhận QR</b>
+    <label>Ngân hàng</label>
+    <select id="bankQ"></select>
+    <label>Số tài khoản</label>
+    <input id="accQ" inputmode="numeric" autocomplete="off">
+    <b style="display:block;margin-top:16px">Tài khoản gửi cho khách qua tin nhắn</b>
+    <label>Ngân hàng</label>
+    <select id="bank"></select>
+    <label>Số tài khoản</label>
+    <input id="acc" inputmode="numeric" autocomplete="off">
+    <label>Tên chủ tài khoản</label>
+    <input id="holder" autocomplete="off">
+    <button class="primary big" id="saveCfg">Lưu</button>
+    <p class="muted">Thông tin tài khoản chỉ lưu trong điện thoại của bạn.</p>
+  </section>
+
+  <section class="card">
+    <b>Dán tin nhắn Zalo của đơn</b>
+    <textarea id="paste" placeholder="Dán nguyên tin nhắn: SĐT, địa chỉ, mặt hàng, tiền hàng…"></textarea>
+    <div class="row"><button class="blue big" id="pasteBtn">📋 Dán</button><button class="primary big" id="add">+ Thêm đơn</button></div>
+  </section>
+
+  <div class="tabs"><button id="tabN" class="tab on">Mới</button><button id="tabQ" class="tab">QR</button><button id="tabM" class="tab">SMS</button><button id="tabT" class="tab">TM</button></div>
+
+  <section class="card hidden" id="confBox">
+    <b id="confTitle">Dán biến động số dư để xác nhận</b>
+    <textarea id="bankMsg" style="min-height:64px" placeholder="Dán tin nhắn biến động số dư của ngân hàng (nhấn giữ ô này để dán)"></textarea>
+    <div class="row"><button class="big" id="pasteBank">📋 Dán</button><button class="blue big" id="confirm">Xác nhận</button></div>
+    <div id="res" class="res"></div>
+  </section>
+
+  <div id="list"></div>
+
+
+  <button class="danger big hidden" id="clearAll">Xóa hết đơn hôm nay</button>
+</main>
+
+<div id="ov" class="hidden">
+  <div class="top"><b id="ovIdx"></b><button id="ovClose">✕ Đóng</button></div>
+  <div class="qr" id="ovQr"></div>
+  <div class="amt" id="ovAmt"></div>
+  <div class="content" id="ovContent"></div>
+  <div class="bank" id="ovBank"></div>
+  <div class="nav">
+    <button id="ovPrev">‹</button>
+    <button id="ovPaid" class="primary">Đã nhận tiền ✓</button>
+    <button id="ovNext">›</button>
+  </div>
+</div>
+
+<input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+<div id="phOv" class="hidden"><img id="phImg" alt=""><div class="phbar"><span>Nhấn giữ ảnh để lưu vào máy</span><button class="danger" id="phDel">Xóa ảnh</button><button id="phClose">Đóng</button></div></div>
+
+<div id="toast" class="hidden"><span id="toastTxt"></span> <button id="toastCopy">Sao chép lại</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';s.onerror=function(){var t=document.createElement('script');t.src='https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';document.head.appendChild(t)};document.head.appendChild(s)"></script>
+<script>
+/*CORE*/
+const BANKS=[
+["Vietcombank","970436"],["VietinBank","970415"],["BIDV","970418"],["Agribank","970405"],
+["Techcombank","970407"],["MB Bank","970422"],["ACB","970416"],["VPBank","970432"],
+["TPBank","970423"],["Sacombank","970403"],["HDBank","970437"],["VIB","970441"],
+["SHB","970443"],["OCB","970448"],["MSB","970426"],["SeABank","970440"],
+["Eximbank","970431"],["LPBank","970449"],["Nam A Bank","970428"],["Bac A Bank","970409"],
+["VietBank","970433"],["PVcomBank","970412"],["ABBank","970425"],["NCB","970419"],
+["SCB","970429"],["Kienlongbank","970452"],["BaoViet Bank","970438"],["Cake by VPBank","546034"],
+["Timo","963388"]
+];
+const EXTRA=1,SHIP_DEF=20000,SHIP_STEP=5000;
+const fmt=n=>Number(n||0).toLocaleString("vi-VN");
+const amountOf=o=>(o.goods||0)+(o.ship||0)+EXTRA;
+const msgAmountOf=o=>(o.goods||0)+(o.ship||0);
+const fmtK=v=>v>0&&v%1000===0?(v/1000)+"k":fmt(v)+"đ";
+function tlv(id,val){return id+String(val.length).padStart(2,"0")+val}
+function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++){c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xFFFF}}return c.toString(16).toUpperCase().padStart(4,"0")}
+function stripVN(s){return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").replace(/[^A-Za-z0-9 \-]/g,"")}
+function buildVietQR(o){
+  const inner=tlv("00","A000000727")+tlv("01",tlv("00",o.bin)+tlv("01",o.account))+tlv("02","QRIBFTTA");
+  const amount=Math.round(o.amount||0);
+  let p=tlv("00","01")+tlv("01",amount>0?"12":"11")+tlv("38",inner)+tlv("53","704");
+  if(amount>0)p+=tlv("54",String(amount));
+  p+=tlv("58","VN");
+  const content=stripVN(o.content||"").slice(0,25);
+  if(content)p+=tlv("62",tlv("08",content));
+  p+="6304";
+  return p+crc16(p);
+}
+const PHONE_RE=/(?:\+?84|0)[\s.\-]?[35789](?:[\s.\-]?\d){8}/;
+function parseOrder(text,defShip){
+  if(defShip===undefined)defShip=SHIP_DEF;
+  let phone="",rest=text;
+  const m=text.match(PHONE_RE);
+  if(m){let d=m[0].replace(/\D/g,"");if(d.startsWith("84"))d="0"+d.slice(2);phone=d;rest=text.replace(m[0]," ")}
+  const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
+  let goods=0,ship=0,total=null,goodsTotal=null,lastEnd=0,mm;
+  while((mm=re.exec(rest))){
+    const raw=mm[1],unit=(mm[2]||"").toLowerCase();
+    const thou=/^\d{1,3}([.,]\d{3})+$/.test(raw);
+    let v=thou?parseInt(raw.replace(/[.,]/g,""),10):parseFloat(raw.replace(",","."));
+    if(/^(k|nghìn|nghin|ngàn|ngan)$/.test(unit))v*=1000;
+    else if(/^(tr|triệu|trieu)$/.test(unit))v*=1e6;
+    v=Math.round(v);
+    const idx=mm.index,end=idx+mm[0].length;
+    const lineStart=rest.lastIndexOf("\n",idx)+1;
+    const before=rest.slice(Math.max(lineStart,idx-40),idx).split(/[,;+]/).pop();
+    const shipBefore=rest.slice(Math.max(lineStart,lastEnd,idx-16),idx).split(/[,;+]/).pop();
+    const after=rest.slice(end,end+10).split("\n")[0];
+    lastEnd=end;
+    if(v<1000||v>1e8)continue;
+    const isShip=/ship|vận chuyển|van chuyen|phí/i.test(shipBefore)||/^\s*(ship|vận chuyển)/i.test(after);
+    const isTotal=!isShip&&/tổng|tong|total|\bck\b|chuyển khoản|\bthu\b|\bcod\b/i.test(before);
+    const isGoodsTotal=!isShip&&!isTotal&&/đơn này|đơn là|don nay|tất cả|tat ca|\bhết\b|cộng|thành tiền|thanh tien/i.test(before);
+    const seg=rest.slice(lineStart,idx).split(/[,;+]/).pop();
+    const qm=seg.match(/^\s*(\d{1,2})\s+\D*$/);
+    const mult=qm?parseInt(qm[1],10):1;
+    if(isShip)ship+=v;else if(isTotal)total=v;else if(isGoodsTotal)goodsTotal=v;else goods+=v*mult;
+  }
+  if(ship===0)ship=defShip;
+  if(goodsTotal!==null)goods=goodsTotal;
+  else if(total!==null)goods=Math.max(0,total-ship);
+  return{phone,goods,ship,note:text.trim()};
+}
+function splitMessages(text){
+  const chunks=text.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+  const withPhone=chunks.filter(c=>PHONE_RE.test(c));
+  return withPhone.length>1?withPhone:[text.trim()];
+}
+function numsIn(text){
+  const out=[],re=/\d{1,3}(?:[.,]\d{3})+|\d{4,}/g;let m;
+  while((m=re.exec(text)))out.push(parseInt(m[0].replace(/[.,]/g,""),10));
+  return out;
+}
+function matchBank(text,orders){
+  const clean=text.replace(/(?:so du|số dư|\bSD\b)\s*[:.]?\s*[+\-]?\d[\d.,]*/gi,"");
+  const compact=clean.replace(/[\s.\-]/g,"");
+  const cnt={};numsIn(clean).forEach(n=>{cnt[n]=(cnt[n]||0)+1});
+  const done=[],wrong=[],ambiguous=[],rest=[];
+  const matchAmt=o=>cnt[amountOf(o)]>0?amountOf(o):(cnt[msgAmountOf(o)]>0?msgAmountOf(o):0);
+  orders.forEach(o=>{
+    if(o.paid)return;
+    const hasPhone=!!o.phone&&compact.includes(o.phone),a=matchAmt(o);
+    if(hasPhone&&a){cnt[a]--;done.push({id:o.id,kind:"ok",amount:a})}
+    else if(hasPhone)wrong.push({id:o.id,phone:o.phone,amount:msgAmountOf(o)});
+    else rest.push(o);
+  });
+  const groups={};
+  rest.forEach(o=>{const a=matchAmt(o);if(a)(groups[a]=groups[a]||[]).push(o)});
+  Object.keys(groups).forEach(k=>{
+    const g=groups[k],a=+k,avail=cnt[a]||0;
+    if(g.length<=avail){g.forEach(o=>done.push({id:o.id,kind:"amtonly",amount:a}));cnt[a]-=g.length}
+    else if(avail>0)ambiguous.push({amount:a,ids:g.map(o=>o.id)});
+  });
+  return{done,wrong,ambiguous};
+}
+function buildMsg(o,b){
+  return [fmtK(msgAmountOf(o)),b.account,b.name,b.holder,"Noi dung : "+o.phone].filter(Boolean).join("\n");
+}
+/*ENDCORE*/
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+
+/* tài khoản QR cố định */
+const OCB_IDX=BANKS.findIndex(b=>b[0]==="OCB");
+const VCB_IDX=BANKS.findIndex(b=>b[0]==="Vietcombank");
+let cfgQ=load("ship_cfgQ",{bankIdx:OCB_IDX,account:""});
+let cfgB=load("ship_cfgB",{bankIdx:VCB_IDX,account:"",holder:""});
+function qrAcc(){const b=BANKS[cfgQ.bankIdx]||BANKS[0];return{name:b[0],bin:b[1],account:cfgQ.account}}
+function bankB(){const b=BANKS[cfgB.bankIdx]||BANKS[0];return{name:b[0],account:cfgB.account,holder:cfgB.holder}}
+function paintHdr(){$("hdrSub").textContent=cfgQ.account?"QR: "+qrAcc().name+" · "+cfgQ.account:"Chưa cài tài khoản nhận QR"}
+function openCfg(){$("cfg").classList.remove("hidden");window.scrollTo(0,0)}
+let orders=load("ship_orders",[]);
+let cur=0;
+function purge(){
+  const t=today();const n=orders.length;orders=orders.filter(o=>o.day===t);if(orders.length!==n)saveOrders();
+  const ids=new Set(orders.map(o=>String(o.id)));let ch=false;
+  Object.keys(photos).forEach(k=>{if(!ids.has(k)){delete photos[k];ch=true}});
+  if(ch)savePhotos();
+}
+function saveOrders(){store("ship_orders",orders)}
+
+/* cài đặt tài khoản */
+const bankOpts=BANKS.map((b,i)=>`<option value="${i}">${b[0]}</option>`).join("");
+$("bankQ").innerHTML=bankOpts;$("bank").innerHTML=bankOpts;
+$("bankQ").value=cfgQ.bankIdx;$("accQ").value=cfgQ.account||"";
+$("bank").value=cfgB.bankIdx;$("acc").value=cfgB.account||"";$("holder").value=cfgB.holder||"";
+$("btnCfg").onclick=()=>$("cfg").classList.toggle("hidden");
+$("saveCfg").onclick=()=>{
+  cfgQ={bankIdx:parseInt($("bankQ").value,10),account:$("accQ").value.replace(/\D/g,"")};
+  cfgB={bankIdx:parseInt($("bank").value,10),account:$("acc").value.replace(/\D/g,""),holder:$("holder").value.trim()};
+  store("ship_cfgQ",cfgQ);store("ship_cfgB",cfgB);paintHdr();$("cfg").classList.add("hidden");
+};
+paintHdr();
+if(!cfgQ.account)$("cfg").classList.remove("hidden");
+
+/* thêm đơn */
+$("add").onclick=()=>{
+  const t=$("paste").value.trim();if(!t)return;
+  splitMessages(t).forEach(m=>{const o=parseOrder(m);o.id=Date.now()+Math.random();o.paid=false;o.msgSent=false;o.qrShown=false;o.day=today();orders.push(o)});
+  $("paste").value="";saveOrders();render();
+};
+let armed=0;
+$("clearAll").onclick=()=>{
+  const n=Date.now();
+  if(n-armed<4000){armed=0;orders=[];photos={};savePhotos();saveOrders();render();return}
+  armed=n;$("clearAll").textContent="Bấm lần nữa để xóa hết";
+  setTimeout(()=>{$("clearAll").textContent="Xóa hết đơn hôm nay"},4000);
+};
+
+let tab=load("ship_tab","n");
+const editing=new Set();
+let photos=load("ship_photos",{});
+function savePhotos(){try{localStorage.setItem("ship_photos",JSON.stringify(photos));return true}catch(e){return false}}
+if(!["n","q","m","t"].includes(tab))tab="n";
+const stageOf=o=>o.cash?"t":(o.msgSent?"m":(o.qrShown?"q":"n"));
+const inTab=o=>stageOf(o)===tab;
+const shownAmount=o=>(o.msgSent||o.cash)?msgAmountOf(o):amountOf(o);
+function badge(o){
+  const st=stageOf(o);
+  if(st==="t")return '<span class="badge ok">✓ Đã thu tiền mặt</span>';
+  if(o.paid)return '<span class="badge ok">'+(st==="m"?"✓ Đã ck":"✓ Đã thu")+'</span>';
+  if(st==="m")return '<span class="badge wait">⏳ Đã nhắn STK, chờ ck</span>';
+  if(st==="q")return '<span class="badge">Đã hiện QR</span>';
+  return '<span class="badge">Mới</span>';
+}
+function setTab(t){tab=t;store("ship_tab",t);$("res").innerHTML="";render()}
+$("tabN").onclick=()=>setTab("n");
+$("tabQ").onclick=()=>setTab("q");
+$("tabM").onclick=()=>setTab("m");
+$("tabT").onclick=()=>setTab("t");
+function tmSummary(items){const sum=items.reduce((a,x)=>a+msgAmountOf(x[0]),0);return '<div class="card"><b>Tiền mặt đã thu:</b> <span class="total" style="display:inline">'+fmt(sum)+"đ</span> · "+items.length+" đơn</div>"}
+function render(){
+  purge();
+  const cn=orders.filter(o=>stageOf(o)==="n").length,cq=orders.filter(o=>stageOf(o)==="q").length;
+  const m=orders.filter(o=>stageOf(o)==="m"),paidM=m.filter(o=>o.paid).length,ct=orders.filter(o=>o.cash).length;
+  $("tabN").textContent="Mới ("+cn+")";
+  $("tabQ").textContent="QR ("+cq+")";
+  $("tabM").textContent="SMS ("+paidM+"/"+m.length+")";
+  $("tabT").textContent="TM ("+ct+")";
+  ["N","Q","M","T"].forEach(k=>$("tab"+k).classList.toggle("on",tab===k.toLowerCase()));
+  $("confBox").classList.toggle("hidden",tab!=="m");
+  $("clearAll").classList.toggle("hidden",!orders.length);
+  const items=orders.map((o,i)=>[o,i]).filter(x=>inTab(x[0]));
+  if(!items.length){
+    const msg={n:"Chưa có đơn mới. Dán tin nhắn Zalo ở trên để thêm.",q:"Chưa có đơn nào ở tab QR. Bấm “Hiện QR” ở một đơn để chuyển sang đây.",m:"Chưa có đơn nào ở tab SMS. Bấm “Nhắn STK” ở một đơn để chuyển sang đây.",t:"Chưa có đơn thu tiền mặt. Bấm “Đã thu TM” ở một đơn để chuyển sang đây."}[tab];
+    $("list").innerHTML='<div class="card muted">'+msg+"</div>";return;
+  }
+  $("list").innerHTML=(tab==="t"?tmSummary(items):"")+items.map(([o,i])=>{
+    const st=stageOf(o),compact=st!=="n",open=!compact||editing.has(o.id);
+    const smsBtn=(t,a)=>'<a class="btn blue" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
+    const sm=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
+    const paidBtn='<button class="primary" data-a="paid">'+(o.paid?(st==="m"?"Bỏ đã ck":"Bỏ đã thu"):(st==="m"?"Đã ck ✓":"Đã thu QR"))+"</button>";
+    const cashBtn='<button class="tm" data-a="cash">Đã thu TM</button>';
+    let acts,extra="";
+    if(st==="m"){
+      acts='<div class="row">'+smsBtn("Nhắn lại","resend")+paidBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("photo","📷 Chụp ảnh","blue")+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
+      extra='<div class="row smrow" style="margin-top:8px">'+sm("show","Hiện QR")+sm("back","Về Mới")+"</div>";
+    }else if(st==="q"){
+      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row" style="margin-top:6px">'+paidBtn.replace('class="primary"','')+cashBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
+      extra='<div class="row smrow" style="margin-top:8px">'+sm("back","Về Mới")+"</div>";
+    }else if(st==="t"){
+      acts='<div class="row"><button class="primary" data-a="uncash">Bỏ thu TM</button></div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
+    }else{
+      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row" style="margin-top:8px">'+paidBtn.replace('class="primary"','')+cashBtn+'<button class="danger" data-a="del">Xóa</button></div>';
+    }
+    const ph=(photos[String(o.id)]||[]);
+    const thumbs=(st==="m"&&ph.length)?'<div class="thumbs">'+ph.map((u,k)=>'<img src="'+u+'" data-ph="'+o.id+"|"+k+'" alt="ảnh">').join("")+"</div>":"";
+    const edit=open?`<div class="row">
+        <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
+        <div><label>Tiền ship</label><div class="stepper"><button data-a="shipdn">−</button><b>${fmt(o.ship)}</b><button data-a="shipup">+</button></div></div>
+      </div>
+      <label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}">
+      <div class="note">${esc(o.note)}</div>`+extra:"";
+    const sub=compact?"hàng "+fmtK(o.goods||0)+" + ship "+fmtK(o.ship||0):(o.msgSent?"không cộng lẻ":"đã +1đ lẻ");
+    return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
+      <div class="row" style="align-items:flex-start">
+        <div><div class="phone">${o.phone?'<a href="tel:'+esc(o.phone)+'" style="display:inline-block;padding:2px 0">📞 '+esc(o.phone)+"</a>":"(chưa có SĐT)"}</div>${badge(o)}</div>
+        <div><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div></div>
+      </div>
+      ${edit}${thumbs}${acts}
+    </div>`}).join("");
+}
+$("list").addEventListener("input",e=>{
+  const f=e.target.dataset.f;if(!f)return;
+  const card=e.target.closest(".order"),o=orders[+card.dataset.i];
+  if(f==="phone")o.phone=e.target.value.replace(/\D/g,"");
+  else o[f]=parseInt(e.target.value.replace(/\D/g,""),10)||0;
+  saveOrders();card.querySelector(".total").textContent=fmt(shownAmount(o))+"đ";
+});
+$("list").addEventListener("click",e=>{
+  if(e.target.dataset.copy){copyPhone(e.target.dataset.copy);return}
+  if(e.target.dataset.ph){openPhoto(e.target.dataset.ph);return}
+  const a=e.target.dataset.a;if(!a)return;
+  const i=+e.target.closest(".order").dataset.i,o=orders[i];
+  if(a==="show")startQr(i);
+  else if(a==="cash"){o.cash=true;o.paid=true;saveOrders();render()}
+  else if(a==="uncash"){o.cash=false;o.paid=false;saveOrders();render()}
+  else if(a==="edit"){editing.has(o.id)?editing.delete(o.id):editing.add(o.id);render()}
+  else if(a==="photo"){camTarget=o.id;$("cam").value="";$("cam").click()}
+  else if(a==="msg"||a==="resend"){
+    if(!o.phone){e.preventDefault();toast("Đơn chưa có SĐT khách, hãy nhập SĐT trước.");return}
+    if(!cfgB.account){e.preventDefault();openCfg();toast("Hãy nhập tài khoản gửi cho khách trước.");return}
+    o.msgSent=true;o.qrShown=false;saveOrders();
+    lastMsg=buildMsg(o,bankB());lastPhone=o.phone;
+    const el=e.target.closest("a");if(el&&el.setAttribute)el.setAttribute("href",smsHref(o));
+    toast("",true);doCopy();
+    setTimeout(render,400);
+  }
+  else if(a==="back"){o.msgSent=false;o.qrShown=false;saveOrders();render()}
+  else if(a==="paid"){o.paid=!o.paid;saveOrders();render()}
+  else if(a==="del"){delete photos[String(o.id)];savePhotos();orders.splice(i,1);saveOrders();render()}
+  else if(a==="shipup"||a==="shipdn"){o.ship=Math.max(0,(o.ship||0)+(a==="shipup"?SHIP_STEP:-SHIP_STEP));saveOrders();render()}
+});
+
+/* QR */
+function qrSvg(str){
+  const qr=qrcode(0,"M");qr.addData(str);qr.make();
+  const n=qr.getModuleCount(),q=4;let d="";
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(qr.isDark(r,c))d+=`M${c+q} ${r+q}h1v1h-1z`;
+  const s=n+2*q;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" shape-rendering="crispEdges"><rect width="${s}" height="${s}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+let ovIds=[];
+const qrContent=o=>"QR chan ga - "+(o.phone||"");
+function startQr(i){
+  ovIds=(tab==="m"?[orders[i]]:orders.filter(inTab)).map(o=>o.id);
+  showQr(orders[i].id);
+}
+function showQr(id){
+  if(!cfgQ.account){openCfg();toast("Hãy nhập tài khoản nhận QR trước.");return}
+  if(typeof qrcode==="undefined"){$("libWarn").classList.remove("hidden");return}
+  const qa=qrAcc();
+  const o=orders.find(q=>q.id===id);if(!o)return;
+  cur=ovIds.indexOf(id);if(cur<0){ovIds=[id];cur=0}
+  o.qrShown=true;o.msgSent=false;saveOrders();
+  const amount=amountOf(o);
+  $("ovQr").innerHTML=qrSvg(buildVietQR({bin:qa.bin,account:qa.account,amount,content:qrContent(o)}));
+  $("ovIdx").textContent="Đơn "+(cur+1)+"/"+ovIds.length+(o.paid?" · ĐÃ THU":"");
+  $("ovAmt").textContent=fmt(amount)+"đ";
+  $("ovContent").textContent="Nội dung: "+qrContent(o);
+  $("ovBank").textContent=qa.name+" · "+qa.account;
+  $("ovPaid").textContent=o.paid?"Bỏ đã thu":"Đã nhận tiền ✓";
+  $("ov").classList.remove("hidden");
+}
+$("ovClose").onclick=()=>{$("ov").classList.add("hidden");render()};
+$("ovPrev").onclick=()=>{if(cur>0)showQr(ovIds[cur-1])};
+$("ovNext").onclick=()=>{if(cur<ovIds.length-1)showQr(ovIds[cur+1])};
+$("ovPaid").onclick=()=>{const o=orders.find(q=>q.id===ovIds[cur]);if(!o)return;o.paid=!o.paid;saveOrders();if(o.paid&&cur<ovIds.length-1)showQr(ovIds[cur+1]);else showQr(o.id)};
+let tx=0;
+$("ov").addEventListener("touchstart",e=>{tx=e.changedTouches[0].clientX},{passive:true});
+$("ov").addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-tx;if(dx<-70)$("ovNext").click();else if(dx>70)$("ovPrev").click()},{passive:true});
+
+/* chạm SĐT để sao chép */
+async function copyPhone(num){
+  try{await navigator.clipboard.writeText(num);toast("✓ Đã sao chép số "+num+". Dán vào bàn phím gọi hoặc ô tìm liên hệ.")}
+  catch(e){toast("Không sao chép được. Số khách: "+num)}
+}
+
+/* chụp ảnh đồ */
+let camTarget=null,phCur=null;
+function shrink(file,max,cb){
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{
+    const r=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);cb(c.toDataURL("image/jpeg",0.7));
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);cb(null)};
+  img.src=url;
+}
+$("cam").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];if(!f||camTarget===null)return;
+  const id=String(camTarget);
+  shrink(f,1000,url=>{
+    if(!url){toast("Không đọc được ảnh.");return}
+    (photos[id]=photos[id]||[]).push(url);
+    if(!savePhotos()){photos[id].pop();toast("Bộ nhớ trình duyệt đầy, hãy xóa bớt ảnh cũ.")}
+    render();
+  });
+});
+function openPhoto(key){
+  const [id,k]=key.split("|"),list=photos[id]||[];
+  if(!list[+k])return;
+  phCur={id,k:+k};$("phImg").src=list[+k];$("phOv").classList.remove("hidden");
+}
+$("phClose").onclick=()=>$("phOv").classList.add("hidden");
+$("phDel").onclick=()=>{
+  if(phCur&&photos[phCur.id]){photos[phCur.id].splice(phCur.k,1);savePhotos()}
+  $("phOv").classList.add("hidden");render();
+};
+
+/* nhắn STK: bấm là mở app tin nhắn với sẵn SĐT + nội dung */
+let lastMsg="",lastPhone="",toastTimer=0;
+function smsHref(o){
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  return "sms:"+o.phone+(ios?"&":"?")+"body="+encodeURIComponent(buildMsg(o,bankB()));
+}
+function toast(txt,withCopy){
+  $("toastTxt").textContent=txt;
+  $("toastCopy").classList.toggle("hidden",!withCopy);
+  $("toast").classList.remove("hidden");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.add("hidden"),withCopy?20000:4000);
+}
+async function doCopy(){
+  try{await navigator.clipboard.writeText(lastMsg);$("toastTxt").textContent="✓ Đã sao chép tin nhắn cho "+lastPhone+". Nếu app Tin nhắn chưa mở, hãy mở và dán."}
+  catch(e){$("toastTxt").textContent="Giữ để chọn rồi sao chép:\n"+lastMsg}
+}
+$("toastCopy").onclick=doCopy;
+
+/* xác nhận ck từ tin nhắn biến động số dư */
+$("confirm").onclick=()=>{
+  const t=$("bankMsg").value.trim();if(!t)return;
+  const scope=orders.filter(o=>!o.paid&&inTab(o));
+  const r=matchBank(t,scope),out=[];
+  r.done.forEach(x=>{
+    const o=orders.find(q=>q.id===x.id);o.paid=true;
+    out.push('<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+fmt(x.amount)+"đ"+(x.kind==="amtonly"?" (khớp theo số tiền)":"")+"</div>");
+  });
+  r.ambiguous.forEach(g=>{
+    out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+fmt(g.amount)+"đ. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{const o=orders.find(q=>q.id===id);return '<button data-pick="'+id+'" style="margin:6px 6px 0 0">'+esc(o.phone||"?")+"</button>"}).join(""));
+  });
+  r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT '+esc(x.phone)+" nhưng số tiền không khớp (cần "+fmt(x.amount)+"đ). Chưa xác nhận.</div>"));
+  if(!out.length)out.push('<div class="bad">Không có số tiền nào khớp đơn chưa thu ở tab này. Kiểm tra lại số tiền hoặc tab.</div>');
+  $("res").innerHTML=out.join("");
+  if(r.done.length||r.ambiguous.length)$("bankMsg").value="";
+  saveOrders();render();
+};
+$("res").addEventListener("click",e=>{
+  const id=e.target.dataset.pick;if(!id)return;
+  const o=orders.find(q=>String(q.id)===id);
+  if(o){o.paid=true;saveOrders()}
+  e.target.remove();render();
+});
+
+/* nút dán + tự chạy khi dán */
+function hintPaste(el){el.focus();toast("Hãy cho phép dán khi trình duyệt hỏi, hoặc nhấn giữ vào ô rồi chọn Dán.")}
+function pasteInto(id,after){
+  const el=$(id);
+  if(!navigator.clipboard||!navigator.clipboard.readText){hintPaste(el);return}
+  navigator.clipboard.readText().then(t=>{if(t&&t.trim()){el.value=t;after()}else hintPaste(el)}).catch(()=>hintPaste(el));
+}
+$("pasteBtn").onclick=()=>pasteInto("paste",()=>$("add").onclick());
+$("pasteBank").onclick=()=>pasteInto("bankMsg",()=>$("confirm").onclick());
+$("paste").addEventListener("paste",()=>setTimeout(()=>{if($("paste").value.trim())$("add").onclick()},60));
+$("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.trim())$("confirm").onclick()},60));
+
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+render();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});
+</script>
+</body>
+</html>
