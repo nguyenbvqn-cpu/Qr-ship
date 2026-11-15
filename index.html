@@ -201,13 +201,13 @@ function parseOrder(text,defShip){
   let phone="",rest=text;
   const m=text.match(PHONE_RE);
   if(m){let d=m[0].replace(/\D/g,"");if(d.startsWith("84"))d="0"+d.slice(2);phone=d;rest=text.replace(m[0]," ")}
-  const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
+  const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|l|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
   let goods=0,ship=0,total=null,goodsTotal=null,lastEnd=0,mm;
   while((mm=re.exec(rest))){
     const raw=mm[1],unit=(mm[2]||"").toLowerCase();
     const thou=/^\d{1,3}([.,]\d{3})+$/.test(raw);
     let v=thou?parseInt(raw.replace(/[.,]/g,""),10):parseFloat(raw.replace(",","."));
-    if(/^(k|nghìn|nghin|ngàn|ngan)$/.test(unit))v*=1000;
+    if(/^(k|l|nghìn|nghin|ngàn|ngan)$/.test(unit))v*=1000; // "l" là gõ nhầm của "k"
     else if(/^(tr|triệu|trieu)$/.test(unit))v*=1e6;
     v=Math.round(v);
     const idx=mm.index,end=idx+mm[0].length;
@@ -216,10 +216,14 @@ function parseOrder(text,defShip){
     const shipBefore=rest.slice(Math.max(lineStart,lastEnd,idx-16),idx).split(/[,;+]/).pop();
     const after=rest.slice(end,end+10).split("\n")[0];
     lastEnd=end;
+    const seg0=rest.slice(lineStart,idx).split(/[,;+]/).pop();
+    const qtyLine=/^\s*(\d{1,2})\s+\D*$/.test(seg0);
+    const kw=/tổng|tong|đơn này|don nay|đơn là|tiền đồ|tien do|tiền hàng|tien hang|ship|\bck\b|\bthu\b/i.test(before);
+    if(!unit&&!thou&&v>=5&&v<1000&&!/^\s*[\/\-]/.test(after)&&/^\s*$/.test(after)&&(qtyLine||kw))v*=1000; // giá không ghi k
     if(v<1000||v>1e8)continue;
     const isShip=/ship|vận chuyển|van chuyen|phí/i.test(shipBefore)||/^\s*(ship|vận chuyển)/i.test(after);
     const isTotal=!isShip&&/tổng|tong|total|\bck\b|chuyển khoản|\bthu\b|\bcod\b/i.test(before);
-    const isGoodsTotal=!isShip&&!isTotal&&/đơn này|đơn là|don nay|tất cả|tat ca|\bhết\b|cộng|thành tiền|thanh tien/i.test(before);
+    const isGoodsTotal=!isShip&&!isTotal&&/đơn này|đơn là|don nay|tiền đồ|tien do|tiền hàng|tien hang|tất cả|tat ca|\bhết\b|cộng|thành tiền|thanh tien/i.test(before);
     const seg=rest.slice(lineStart,idx).split(/[,;+]/).pop();
     const qm=seg.match(/^\s*(\d{1,2})\s+\D*$/);
     const mult=qm?parseInt(qm[1],10):1;
