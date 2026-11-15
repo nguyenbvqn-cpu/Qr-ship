@@ -399,7 +399,7 @@ function render(){
       <div class="line">
         <div class="stepper sm"><button data-a="shipdn">−</button><b>ship ${fmtK(o.ship||0)}</b><button data-a="shipup">+</button></div>
         <span class="muted">hàng ${fmtK(o.goods||0)}</span>
-        <span class="arws"><button class="arw" data-a="up"${k===0||!!items[k-1][0].paid!==!!o.paid?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1||!!items[k+1][0].paid!==!!o.paid?" disabled":""}>▼</button></span>
+        <span class="arws"><button class="arw" data-a="up"${(tab==="m"&&!o.paid)||k===0||!!items[k-1][0].paid!==!!o.paid?" disabled":""}>▲</button><button class="arw" data-a="down"${(tab==="m"&&!o.paid)||k===items.length-1||!!items[k+1][0].paid!==!!o.paid?" disabled":""}>▼</button></span>
       </div>
       ${thumbs}
       <div class="acts">${main}</div>
@@ -428,7 +428,7 @@ $("list").addEventListener("click",e=>{
   else if(a==="msg"||a==="resend"){
     if(!o.phone){e.preventDefault();toast("Đơn chưa có SĐT khách, hãy nhập SĐT trước.");return}
     if(!cfgB.account){e.preventDefault();openCfg();toast("Hãy nhập tài khoản gửi cho khách trước.");return}
-    o.msgSent=true;o.qrShown=false;saveOrders();
+    o.msgSent=true;o.qrShown=false;o.msgAt=Date.now();saveOrders();
     lastMsg=buildMsg(o,bankB());lastPhone=o.phone;
     const el=e.target.closest("a");if(el&&el.setAttribute)el.setAttribute("href",smsHref(o));
     toast("",true);doCopy();
@@ -629,7 +629,9 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()})
 /* đơn chưa thu lên đầu, đã thu xuống dưới (giữ thứ tự trong từng nhóm) */
 function tabIdx(){
   const idx=[];orders.forEach((o,k)=>{if(inTab(o))idx.push(k)});
-  return idx.filter(k=>!orders[k].paid).concat(idx.filter(k=>orders[k].paid));
+  const un=idx.filter(k=>!orders[k].paid);
+  if(tab==="m")un.sort((a,b)=>(orders[b].msgAt||0)-(orders[a].msgAt||0));
+  return un.concat(idx.filter(k=>orders[k].paid));
 }
 function moveOrder(i,dir){
   const idx=tabIdx();
