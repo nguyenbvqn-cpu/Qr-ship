@@ -638,7 +638,12 @@ $("confirm").onclick=()=>{
     out.push('<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+fmt(x.amount)+"đ"+(x.kind==="amtonly"?" (khớp theo số tiền)":"")+"</div>");
   });
   r.ambiguous.forEach(g=>{
-    out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+fmt(g.amount)+"đ. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{const o=orders.find(q=>q.id===id);return '<button data-pick="'+id+'" style="margin:6px 6px 0 0">'+esc(o.phone||"?")+"</button>"}).join(""));
+    out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+fmt(g.amount)+"đ, không thấy SĐT hay tên khách trong tin. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{
+      const o=orders.find(q=>q.id===id),hh=o.msgAt?new Date(o.msgAt):null;
+      const when=hh?" · nhắn lúc "+String(hh.getHours()).padStart(2,"0")+":"+String(hh.getMinutes()).padStart(2,"0"):"";
+      const line=(noteText(o).split("\n")[0]||"").slice(0,40);
+      return '<button data-pick="'+id+'" style="display:block;width:100%;text-align:left;margin-top:6px"><b>'+esc(o.phone||"?")+"</b>"+when+'<br><small class="muted" style="pointer-events:none">'+esc(line)+"</small></button>";
+    }).join(""));
   });
   r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT hoặc tên khách của đơn '+esc(x.phone)+" nhưng số tiền không khớp (cần "+fmt(x.amount)+"đ). Chưa xác nhận.</div>"));
   if(!out.length)out.push('<div class="bad">Không có số tiền nào khớp đơn chưa thu ở tab này. Kiểm tra lại số tiền hoặc tab.</div>');
@@ -647,10 +652,10 @@ $("confirm").onclick=()=>{
   saveOrders();render();
 };
 $("res").addEventListener("click",e=>{
-  const id=e.target.dataset.pick;if(!id)return;
+  const pb=e.target.closest&&e.target.closest("[data-pick]");if(!pb)return;const id=pb.dataset.pick;
   const o=orders.find(q=>String(q.id)===id);
-  if(o){o.paid=true;saveOrders()}
-  e.target.remove();render();
+  if(o){o.paid=true;saveOrders();$("res").innerHTML='<div class="ok">✓ Đã xác nhận đơn '+esc(o.phone||"?")+" — "+fmt(msgAmountOf(o))+"đ</div>"}
+  render();
 });
 
 /* nút dán + tự chạy khi dán */
