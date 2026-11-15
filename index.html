@@ -252,7 +252,20 @@ function numsIn(text){
   while((m=re.exec(text)))out.push(parseInt(m[0].replace(/[.,]/g,""),10));
   return out;
 }
+/* tên người chuyển trong tin ngân hàng (chữ IN HOA, ≥2 từ) có xuất hiện trong tin đơn không */
+function bankNames(text){
+  const out=[],re=/\b[A-Z]{1,}(?: [A-Z]{1,}){1,5}\b/g;let m;
+  const t=stripVN(text.replace(/[._]/g," ")).replace(/\b(VND|VNĐ|TK|SD|REF|ND|VCB|MBVCB|IBFT|FT\w*|CK|QR)\b/g," | ").replace(/\s+/g," ");
+  while((m=re.exec(t)))if(m[0].replace(/ /g,"").length>=8&&!/^(SO DU|CHUYEN TIEN|VND|TK|REF)/.test(m[0]))out.push(m[0]);
+  return out;
+}
+function nameHit(o,names){
+  if(!names.length)return false;
+  const n=" "+stripVN(o.note||"").toUpperCase().replace(/\s+/g," ")+" ";
+  return names.some(x=>n.includes(" "+x+" ")||n.includes(" "+x+".")||n.includes(" "+x+","));
+}
 function matchBank(text,orders){
+  const names=bankNames(text);
   const clean=text.replace(/(?:so du|số dư|\bSD\b)\s*[:.]?\s*[+\-]?\d[\d.,]*/gi,"");
   const compact=clean.replace(/[\s.\-]/g,"");
   const cnt={};numsIn(clean).forEach(n=>{cnt[n]=(cnt[n]||0)+1});
@@ -260,8 +273,8 @@ function matchBank(text,orders){
   const matchAmt=o=>cnt[amountOf(o)]>0?amountOf(o):(cnt[msgAmountOf(o)]>0?msgAmountOf(o):0);
   orders.forEach(o=>{
     if(o.paid)return;
-    const hasPhone=!!o.phone&&compact.includes(o.phone),a=matchAmt(o);
-    if(hasPhone&&a){cnt[a]--;done.push({id:o.id,kind:"ok",amount:a})}
+    const hasPhone=(!!o.phone&&compact.includes(o.phone))||nameHit(o,names),a=matchAmt(o);
+    if(hasPhone&&a&&cnt[a]>0){cnt[a]--;done.push({id:o.id,kind:"ok",amount:a})}
     else if(hasPhone)wrong.push({id:o.id,phone:o.phone,amount:msgAmountOf(o)});
     else rest.push(o);
   });
@@ -627,7 +640,7 @@ $("confirm").onclick=()=>{
   r.ambiguous.forEach(g=>{
     out.push('<div class="bad">Có '+g.ids.length+" đơn cùng số tiền "+fmt(g.amount)+"đ. Chọn đơn khách vừa chuyển:</div>"+g.ids.map(id=>{const o=orders.find(q=>q.id===id);return '<button data-pick="'+id+'" style="margin:6px 6px 0 0">'+esc(o.phone||"?")+"</button>"}).join(""));
   });
-  r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT '+esc(x.phone)+" nhưng số tiền không khớp (cần "+fmt(x.amount)+"đ). Chưa xác nhận.</div>"));
+  r.wrong.forEach(x=>out.push('<div class="bad">⚠ Thấy SĐT hoặc tên khách của đơn '+esc(x.phone)+" nhưng số tiền không khớp (cần "+fmt(x.amount)+"đ). Chưa xác nhận.</div>"));
   if(!out.length)out.push('<div class="bad">Không có số tiền nào khớp đơn chưa thu ở tab này. Kiểm tra lại số tiền hoặc tab.</div>');
   $("res").innerHTML=out.join("");
   if(r.done.length||r.ambiguous.length)$("bankMsg").value="";
