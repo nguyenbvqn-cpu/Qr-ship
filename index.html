@@ -230,7 +230,7 @@ function buildVietQR(o){
 }
 const PHONE_RE=/(?:\+?84|0)[\s.\-]?[35789](?:[\s.\-]?\d){8}/;
 /* bảng giá: dòng trên được ưu tiên trước (vd "bé" trước "to", "me" trước "trộn") */
-const CATALOG_DEFAULT=`bé, nhỏ = 50k
+const CATALOG_DEFAULT=`bé, nhỏ = 55k
 sốt me, me = 55k
 rút xương, trộn = 65k
 ớt xanh, cay = 75k
@@ -395,7 +395,7 @@ $("saveCfg").onclick=()=>{
   store("ship_cfgQ",cfgQ);store("ship_cfgB",cfgB);
   const cat=$("catalog").value.trim()||CATALOG_DEFAULT;store("ship_catalog",cat);setCatalog(cat);paintHdr();$("cfg").classList.add("hidden");
 };
-setCatalog(load("ship_catalog",CATALOG_DEFAULT));$("catalog").value=load("ship_catalog",CATALOG_DEFAULT);
+{let cat=load("ship_catalog",CATALOG_DEFAULT);if(/^bé, nhỏ = 50k/.test(cat)){cat=cat.replace(/^bé, nhỏ = 50k/,"bé, nhỏ = 55k");store("ship_catalog",cat)}setCatalog(cat);$("catalog").value=cat;}
 paintHdr();
 if(!cfgQ.account)$("cfg").classList.remove("hidden");
 
