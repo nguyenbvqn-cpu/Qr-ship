@@ -671,9 +671,9 @@ function paintMoney(){
     R("+ Tiền mua đồ",mk(c.v.buy))+
     R("− Tiền nợ",mk(c.v.debt))+
     R("+ Số dư TK QR"+sub("thu "+mk(c.x.g.qr.v)+" ("+c.x.g.qr.n+" đơn)"+(c.v.wq?" − rút "+mk(c.v.wq):"")),sg(c.balQ))+
-    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+(c.v.ws?" − rút "+mk(c.v.ws):"")),sg(c.balS))+
+    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+(c.smsDue?' <span style="color:#b42318;font-weight:600">+ chưa ck '+mk(c.smsDue)+"</span>":"")+(c.v.ws?" − rút "+mk(c.v.ws):"")),sg(c.balS))+
     R("Được hưởng",sg(c.net),"big")+"</table>"+
-    '<p class="muted">Tham khảo: tiền mặt thu từ đơn hôm nay '+mk(c.x.g.tm.v)+" ("+c.x.g.tm.n+" đơn)."+(c.x.due.n?' <span style="color:#b42318">Còn '+c.x.due.n+" đơn chưa thu "+mk(c.x.due.v)+".</span>":"")+"</p>";
+    "";
 }
 Object.keys(MF).forEach(k=>{
   $(MF[k]).addEventListener("input",e=>{money[k]=e.target.value;store("ship_money",money);paintMoney()});
