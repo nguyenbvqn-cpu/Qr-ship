@@ -82,6 +82,8 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 #ov .bank{font-size:14px;color:#555;text-align:center}
 #ov .nav{display:flex;gap:8px;width:100%;margin-top:auto;padding-top:8px}
 #ov .nav button{flex:1;padding:14px}
+#dupOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:26;display:flex;align-items:flex-end;justify-content:center}
+#dupOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px}
 #sumOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
 #sumOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:90vh;overflow:auto}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
@@ -156,6 +158,12 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
 <div id="phOv" class="hidden"><img id="phImg" alt=""><div class="phbar"><span>Nhấn giữ ảnh để lưu vào máy</span><button class="danger" id="phDel">Xóa ảnh</button><button id="phClose">Đóng</button></div></div>
 
+<div id="dupOv" class="hidden"><div class="sheet">
+  <b style="font-size:18px;color:#b42318">⚠ Đơn có thể bị trùng</b>
+  <p id="dupBody" style="font-size:15px"></p>
+  <div class="row" style="flex-wrap:wrap"><button class="danger big" id="dupAll">Vẫn thêm</button><button class="primary big" id="dupSkip">Bỏ đơn trùng</button></div>
+  <button class="big" id="dupCancel">Hủy</button>
+</div></div>
 <div id="sumOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><b style="font-size:18px">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
   <div id="sumBody"></div>
@@ -311,11 +319,30 @@ paintHdr();
 if(!cfgQ.account)$("cfg").classList.remove("hidden");
 
 /* thêm đơn */
+const TABNAME={n:"Mới",q:"QR",m:"SMS",t:"TM"};
+function commitOrders(list){
+  list.forEach(o=>orders.push(o));
+  $("paste").value="";saveOrders();closeIn();
+  if(tab!=="n")setTab("n");else render();
+  if(list.length)toast("✓ Đã tạo "+list.length+" đơn.");
+}
 $("add").onclick=()=>{
   const t=$("paste").value.trim();if(!t)return;
-  splitMessages(t).forEach(m=>{const o=parseOrder(m);o.id=Date.now()+Math.random();o.paid=false;o.msgSent=false;o.qrShown=false;o.day=today();orders.push(o)});
-  $("paste").value="";saveOrders();render();closeIn();
-  if(tab!=="n")setTab("n");
+  const list=splitMessages(t).map(m=>{const o=parseOrder(m);o.id=Date.now()+Math.random();o.paid=false;o.msgSent=false;o.qrShown=false;o.day=today();return o});
+  const dup=[],seen=new Set();
+  list.forEach(o=>{
+    const old=orders.find(x=>(o.phone&&x.phone===o.phone)||noteText(x)===noteText(o));
+    if(old)dup.push({o,txt:esc(o.phone||"?")+" đã có ở tab "+TABNAME[stageOf(old)]+" ("+fmt(shownAmount(old))+"đ"+(old.paid?", đã thu":"")+")"});
+    else if(o.phone&&seen.has(o.phone))dup.push({o,txt:esc(o.phone)+" bị dán 2 lần trong lần này"});
+    if(o.phone)seen.add(o.phone);
+  });
+  if(!dup.length){commitOrders(list);return}
+  $("dupBody").innerHTML=dup.map(d=>"• "+d.txt).join("<br>");
+  $("dupAll").onclick=()=>{$("dupOv").classList.add("hidden");commitOrders(list)};
+  $("dupSkip").onclick=()=>{$("dupOv").classList.add("hidden");const bad=new Set(dup.map(d=>d.o));commitOrders(list.filter(o=>!bad.has(o)))};
+  $("dupCancel").onclick=()=>{$("dupOv").classList.add("hidden")};
+  $("dupSkip").classList.toggle("hidden",dup.length===list.length);
+  $("dupOv").classList.remove("hidden");
 };
 function openIn(){$("inBox").classList.remove("hidden");$("inBar").classList.add("hidden");$("paste").focus()}
 function closeIn(){$("inBox").classList.add("hidden");$("inBar").classList.remove("hidden")}
@@ -477,7 +504,12 @@ function showQr(id){
 $("ovClose").onclick=()=>{$("ov").classList.add("hidden");render()};
 $("ovPrev").onclick=()=>{if(cur>0)showQr(ovIds[cur-1])};
 $("ovNext").onclick=()=>{if(cur<ovIds.length-1)showQr(ovIds[cur+1])};
-$("ovPaid").onclick=()=>{const o=orders.find(q=>q.id===ovIds[cur]);if(!o)return;o.paid=!o.paid;saveOrders();if(o.paid&&cur<ovIds.length-1)showQr(ovIds[cur+1]);else showQr(o.id)};
+$("ovPaid").onclick=()=>{
+  const o=orders.find(q=>q.id===ovIds[cur]);if(!o)return;
+  o.paid=!o.paid;saveOrders();
+  if(o.paid){$("ov").classList.add("hidden");setTab("n");window.scrollTo(0,0);toast("✓ Đã thu "+fmt(amountOf(o))+"đ đơn "+(o.phone||""))}
+  else showQr(o.id);
+};
 let tx=0;
 $("ov").addEventListener("touchstart",e=>{tx=e.changedTouches[0].clientX},{passive:true});
 $("ov").addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-tx;if(dx<-70)$("ovNext").click();else if(dx>70)$("ovPrev").click()},{passive:true});
@@ -620,8 +652,7 @@ $("pasteBtn").onclick=()=>{
   if(!navigator.clipboard||!navigator.clipboard.readText){fail();return}
   navigator.clipboard.readText().then(t=>{
     if(!t||!t.trim()){toast("Chưa có nội dung nào được sao chép.");return}
-    const n0=orders.length;$("paste").value=t;$("add").onclick();
-    toast("✓ Đã tạo "+(orders.length-n0)+" đơn.");
+    $("paste").value=t;$("add").onclick();
   }).catch(fail);
 };
 $("pasteIn").onclick=()=>pasteInto("paste",()=>{});
