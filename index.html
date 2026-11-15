@@ -98,6 +98,13 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .mrow{display:flex;align-items:center;gap:8px;margin-top:8px}
 .mrow label{flex:1;margin:0;font-size:15px;color:inherit}
 .mrow input{flex:0 0 46%;text-align:right;font-size:17px;font-weight:600}
+#histOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
+#histOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:92vh;overflow:auto}
+.hday{border-top:1px solid #e3e5e8;padding:8px 2px;cursor:pointer}
+.hday .t{display:flex;justify-content:space-between;font-weight:700}
+.hday .d{font-size:13px;color:#6b7280}
+.hdet{font-size:13px;margin-top:6px}
+.hdet div{padding:2px 0}
 #sumOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
 #sumOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:90vh;overflow:auto}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
@@ -111,7 +118,7 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 <body>
 <header>
   <div style="min-width:0"><h1>QR ship</h1><small id="hdrSub"></small></div>
-  <div class="hb"><button id="btnMoney">💰 Tiền</button><button id="btnSum">📊 Tổng</button><button id="btnCfg" aria-label="Cài đặt">⚙</button></div>
+  <div class="hb"><button id="btnMoney">💰 Tiền</button><button id="btnSum">📊 Tổng</button><button id="btnHist" aria-label="Lịch sử">📅</button><button id="btnCfg" aria-label="Cài đặt">⚙</button></div>
 </header>
 <main>
   <div id="libWarn" class="warn hidden">Chưa tải được thư viện tạo QR. Hãy bật mạng và tải lại trang.</div>
@@ -133,6 +140,10 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
     <textarea id="catalog" style="min-height:190px;font-size:14px"></textarea>
     <p class="muted" style="margin:4px 0 0">Mỗi dòng: từ khóa, từ khóa = giá. Dòng trên được ưu tiên. Tin nhắn ghi "3 to 2 bé" sẽ tự tính theo bảng này.</p>
     <button class="primary big" id="saveCfg">Lưu</button>
+    <b style="display:block;margin-top:16px">Sao lưu dữ liệu</b>
+    <div class="row"><button class="big" id="bkCopy">📤 Sao lưu</button><button class="big" id="bkShow">📥 Khôi phục</button></div>
+    <div id="bkBox" class="hidden"><textarea id="bkText" placeholder="Dán đoạn sao lưu vào đây"></textarea><button class="danger big" id="bkDo">Khôi phục (ghi đè dữ liệu máy này)</button></div>
+    <p class="muted" style="margin:4px 0 0">Sao lưu chép toàn bộ đơn, lịch sử, tài khoản, bảng giá (không gồm ảnh). Gửi qua Zalo cho chính mình để giữ hoặc chuyển sang máy khác.</p>
     <p class="muted">Thông tin tài khoản chỉ lưu trong điện thoại của bạn.</p>
   </section>
 
@@ -198,6 +209,11 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
   <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000 hoặc cộng nhiều khoản: 300k+150k.</p>
   <div id="monBody"></div>
   <button class="primary big" id="monCopy">Sao chép</button>
+</div></div>
+<div id="histOv" class="hidden"><div class="sheet">
+  <div class="row" style="align-items:center"><button id="hPrev" style="flex:0 0 48px">‹</button><b id="hTitle" style="text-align:center;font-size:17px"></b><button id="hNext" style="flex:0 0 48px">›</button><button id="histClose" style="flex:0 0 48px">✕</button></div>
+  <div id="histBody"></div>
+  <button class="primary big" id="hCopy">Sao chép tổng tháng</button>
 </div></div>
 <div id="sumOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><b style="font-size:18px">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
@@ -385,8 +401,21 @@ function bankB(){const b=BANKS[cfgB.bankIdx]||BANKS[0];return{name:b[0],account:
 function paintHdr(){$("hdrSub").textContent=cfgQ.account?qrAcc().name+" "+cfgQ.account:"Chưa cài TK"}
 function openCfg(){$("cfg").classList.remove("hidden");window.scrollTo(0,0)}
 let orders=load("ship_orders",[]);
+/* lịch sử: cất đơn + bảng tiền của ngày cũ thay vì xóa */
+function archiveOld(){
+  const t=today(),hist=load("ship_hist",{});let ch=false;
+  orders.filter(o=>o.day&&o.day!==t).forEach(o=>{
+    const h=hist[o.day]=hist[o.day]||{orders:[]};h.orders=h.orders||[];
+    if(!h.orders.some(x=>x.id===o.id)){h.orders.push(o);ch=true}
+  });
+  const m=load("ship_money",null);
+  if(m&&m.day&&m.day!==t){(hist[m.day]=hist[m.day]||{orders:[]}).money=m;ch=true}
+  if(ch)store("ship_hist",hist);
+}
+archiveOld();
 let cur=0;
 function purge(){
+  if(orders.some(o=>o.day!==today()))archiveOld();
   const t=today();const n=orders.length;orders=orders.filter(o=>o.day===t);if(orders.length!==n)saveOrders();
   const ids=new Set(orders.map(o=>String(o.id)));let ch=false;
   Object.keys(photos).forEach(k=>{if(!ids.has(k)){delete photos[k];ch=true}});
@@ -653,10 +682,11 @@ $("denBody").addEventListener("input",e=>{
   store("ship_money",money);paintMoney();
 });
 $("wdBtn").onclick=()=>$("wdBox").classList.toggle("hidden");
-function calcMoney(){
-  const x=summary(),v={};Object.keys(MF).forEach(k=>v[k]=parseMoney(money[k]));
-  v.start=denSum(money.cs);v.end=denSum(money.ce);
-  const sw=orders.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
+function calcMoney(list,m){
+  list=list||orders;m=m||money;
+  const x=summary(list),v={};Object.keys(MF).forEach(k=>v[k]=parseMoney(m[k]));
+  v.start=denSum(m.cs);v.end=denSum(m.ce);
+  const sw=list.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
   const diff=v.end-v.start;
   const balQ=x.g.qr.v-v.wq,balS=x.g.sms.v+smsDue-v.ws;
   const net=diff+v.buy-v.debt+balQ+balS;
@@ -679,6 +709,7 @@ Object.keys(MF).forEach(k=>{
   $(MF[k]).addEventListener("input",e=>{money[k]=e.target.value;store("ship_money",money);paintMoney()});
 });
 $("btnMoney").onclick=()=>{
+  archiveOld();
   if(money.day!==today())money={day:today(),cs:{},ce:{},debt:"",buy:"",wq:"",ws:""};
   Object.keys(MF).forEach(k=>$(MF[k]).value=money[k]||"");
   document.querySelectorAll("[data-den]").forEach(el=>{const [side,d]=el.dataset.den.split(":");el.value=((money[side]||{})[d])||""});
@@ -700,12 +731,86 @@ $("monCopy").onclick=async()=>{
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
 
+/* sao lưu / khôi phục */
+const BK_KEYS=["ship_orders","ship_hist","ship_money","ship_cfgQ","ship_cfgB","ship_catalog"];
+$("bkCopy").onclick=async()=>{
+  archiveOld();const data={};BK_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!==null)data[k]=JSON.parse(v)}catch(e){}});
+  const t="QRSHIP1:"+JSON.stringify({at:new Date().toISOString(),data});
+  try{await navigator.clipboard.writeText(t);toast("✓ Đã chép bản sao lưu. Dán vào Zalo gửi cho chính mình.")}catch(e){$("bkBox").classList.remove("hidden");$("bkText").value=t;toast("Hãy chọn hết ô bên dưới rồi sao chép.")}
+};
+$("bkShow").onclick=()=>{$("bkBox").classList.toggle("hidden");$("bkText").value=""};
+let bkArm=0;
+$("bkDo").onclick=()=>{
+  const t=$("bkText").value.trim();
+  if(!t.startsWith("QRSHIP1:")){toast("Đoạn này không phải bản sao lưu của app.");return}
+  if(Date.now()-bkArm>4000){bkArm=Date.now();toast("Bấm lần nữa để ghi đè dữ liệu máy này.");return}
+  try{const d=JSON.parse(t.slice(8)).data;Object.keys(d).forEach(k=>{if(BK_KEYS.includes(k))localStorage.setItem(k,JSON.stringify(d[k]))});toast("✓ Đã khôi phục. Đang tải lại…");setTimeout(()=>location.reload(),800)}
+  catch(e){toast("Bản sao lưu bị lỗi, hãy sao chép lại đầy đủ.")}
+};
+
+/* lịch sử theo ngày / tháng */
+let hMonth=today().slice(0,7),hOpen=null;
+function dayData(){
+  const hist=load("ship_hist",{}),out={};
+  Object.keys(hist).forEach(d=>out[d]={orders:hist[d].orders||[],money:hist[d].money||null});
+  const t=today();out[t]={orders:orders.slice(),money:money&&money.day===t?money:null};
+  return out;
+}
+function dayStat(d){
+  const x=summary(d.orders),c=d.money?calcMoney(d.orders,d.money):null;
+  return{x,c,net:c&&c.v.end?c.net:null};
+}
+function paintHist(){
+  const all=dayData(),days=Object.keys(all).filter(d=>d.startsWith(hMonth)&&(all[d].orders.length||all[d].money)).sort().reverse();
+  const [y,m]=hMonth.split("-");$("hTitle").textContent="Tháng "+(+m)+"/"+y;
+  const T={n:0,qr:0,sms:0,tm:0,tot:0,goods:0,ship:0,net:0,netDays:0,due:0};
+  const rows=days.map(d=>{
+    const st=dayStat(all[d]),x=st.x;
+    T.n+=x.cnt;T.qr+=x.g.qr.v;T.sms+=x.g.sms.v;T.tm+=x.g.tm.v;T.tot+=x.tot;T.goods+=x.goods;T.ship+=x.ship;T.due+=x.due.v;
+    if(st.net!==null){T.net+=st.net;T.netDays++}
+    const dd=d.slice(8)+"/"+d.slice(5,7);
+    let det="";
+    if(hOpen===d){
+      det='<div class="hdet">'+
+        "<div>QR "+mk(x.g.qr.v)+" ("+x.g.qr.n+") · SMS "+mk(x.g.sms.v)+" ("+x.g.sms.n+") · TM "+mk(x.g.tm.v)+" ("+x.g.tm.n+")</div>"+
+        "<div>Tiền hàng "+mk(x.goods)+" · ship "+mk(x.ship)+(x.due.n?' · <span style="color:#b42318">chưa thu '+mk(x.due.v)+" ("+x.due.n+")</span>":"")+"</div>"+
+        (st.c?"<div>Tiền mặt đầu "+mk(st.c.v.start)+" → cuối "+mk(st.c.v.end)+" · mua đồ "+mk(st.c.v.buy)+" · nợ "+mk(st.c.v.debt)+(st.c.v.wq||st.c.v.ws?" · rút "+mk(st.c.v.wq+st.c.v.ws):"")+"</div>":"")+
+        all[d].orders.map(o=>"<div>"+(o.paid?"✓":'<span style="color:#b42318">✗</span>')+" "+esc(o.phone||"?")+" · "+mk(recvAmount(o))+" · "+(o.cash?"TM":o.msgSent?"SMS":"QR")+" · "+esc((noteText(o).split("\n").pop()||"").slice(0,30))+"</div>").join("")+
+        "</div>";
+    }
+    return '<div class="hday" data-day="'+d+'"><div class="t"><span>'+dd+(d===today()?" (hôm nay)":"")+"</span><span>"+mk(x.tot)+'</span></div><div class="d">'+x.cnt+" đơn · ship "+mk(x.ship)+(st.net!==null?" · hưởng "+mk(st.net):"")+(x.due.n?' · <span style="color:#b42318">chưa thu '+mk(x.due.v)+"</span>":"")+"</div>"+det+"</div>";
+  });
+  const R=(a,b,c)=>"<tr"+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
+  $("histBody").innerHTML=days.length?'<table class="sumt">'+
+    R("Số ngày làm",days.length)+R("Số đơn đã thu",T.n)+
+    R("QR",mk(T.qr))+R("SMS",mk(T.sms))+R("Tiền mặt",mk(T.tm))+
+    R("Tổng đã thu",mk(T.tot),"big")+
+    R("Tiền hàng",mk(T.goods))+R("Tiền ship",mk(T.ship))+
+    (T.netDays?R("Được hưởng ("+T.netDays+" ngày có đếm tiền)",mk(T.net),"big"):"")+
+    (T.due?R('<span style="color:#b42318">Còn chưa thu</span>','<span style="color:#b42318">'+mk(T.due)+"</span>"):"")+
+    "</table>"+rows.join(""):'<p class="muted">Chưa có dữ liệu tháng này.</p>';
+  hTot=T;
+}
+let hTot=null;
+$("btnHist").onclick=()=>{archiveOld();hMonth=today().slice(0,7);hOpen=null;paintHist();$("histOv").classList.remove("hidden")};
+$("histClose").onclick=()=>$("histOv").classList.add("hidden");
+$("histOv").addEventListener("click",e=>{if(e.target.id==="histOv")$("histOv").classList.add("hidden")});
+$("hPrev").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m-2,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
+$("hNext").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
+$("histBody").addEventListener("click",e=>{const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
+$("hCopy").onclick=async()=>{
+  const T=hTot;if(!T)return;const [y,m]=hMonth.split("-");
+  const t=["Tổng tháng "+(+m)+"/"+y,"Đơn đã thu: "+T.n,"QR: "+mk(T.qr),"SMS: "+mk(T.sms),"Tiền mặt: "+mk(T.tm),"Tổng đã thu: "+mk(T.tot),"Tiền hàng: "+mk(T.goods),"Tiền ship: "+mk(T.ship)].concat(T.netDays?["Được hưởng: "+mk(T.net)]:[]).concat(T.due?["Còn chưa thu: "+mk(T.due)]:[]).join("\n");
+  try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
+};
+
 /* tổng kết cuối ngày */
 function kindOf(o){return o.cash?"tm":(o.msgSent?"sms":"qr")}
 function recvAmount(o){return o.cash||o.msgSent?msgAmountOf(o):amountOf(o)}
-function summary(){
+function summary(list){
+  list=list||orders;
   const g={qr:{n:0,v:0},sms:{n:0,v:0},tm:{n:0,v:0}},due={n:0,v:0,ship:0};let ship=0,goods=0;
-  orders.forEach(o=>{
+  list.forEach(o=>{
     if(o.paid){const k=kindOf(o);g[k].n++;g[k].v+=recvAmount(o);ship+=o.ship||0;goods+=o.goods||0}
     else{due.n++;due.v+=recvAmount(o);due.ship+=o.ship||0}
   });
