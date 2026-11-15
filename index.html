@@ -32,6 +32,8 @@ button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
 .muted{color:#6b7280;font-size:13px}
 .note{white-space:pre-wrap;font-size:13px;color:#555;background:#f7f8fa;border-radius:8px;padding:8px;margin:8px 0;max-height:84px;overflow:auto}
 .order.paid{opacity:.6}
+.order>.row:first-child{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.order.dragging{position:relative;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:.96}
 .order.paid .total{text-decoration:line-through}
 .badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:#eceef1;color:#444;margin-top:2px}
 .badge.wait{background:#fff0d6;color:#8a4b00;font-weight:600}
@@ -528,6 +530,63 @@ $("paste").addEventListener("paste",()=>setTimeout(()=>{if($("paste").value.trim
 $("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.trim())$("confirm").onclick()},60));
 
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+/* kéo thả đổi thứ tự đơn: giữ khoảng 0,35 giây ở dòng SĐT rồi kéo */
+function applyOrder(arr,dom){
+  const slots=dom.slice().sort((a,b)=>a-b),snap=dom.map(i=>arr[i]);
+  slots.forEach((pos,k)=>{arr[pos]=snap[k]});
+}
+(function(){
+  const list=$("list"),HD=".order>.row:first-child";
+  let timer=0,drag=null,sx=0,sy=0,pend=null,raf=0;
+  const cards=()=>Array.from(list.querySelectorAll(".order"));
+  function start(card,y){
+    const r=card.getBoundingClientRect();
+    drag={card,grab:y-r.top,y};
+    card.classList.add("dragging");
+    try{if(navigator.vibrate)navigator.vibrate(25)}catch(e){}
+  }
+  function place(y){
+    const c=drag.card;drag.y=y;
+    const others=cards().filter(x=>x!==c);
+    let before=null;
+    for(const o of others){const r=o.getBoundingClientRect();if(y<r.top+r.height/2){before=o;break}}
+    if(before){if(c.nextElementSibling!==before)list.insertBefore(c,before)}
+    else{const last=others[others.length-1];if(last&&c.previousElementSibling!==last)last.after(c)}
+    c.style.transform="none";
+    const nat=c.getBoundingClientRect().top;
+    c.style.transform="translateY("+(y-drag.grab-nat)+"px)";
+  }
+  function autoScroll(){
+    cancelAnimationFrame(raf);
+    const step=()=>{
+      if(!drag)return;
+      let d=0;if(drag.y<90)d=-14;else if(drag.y>window.innerHeight-90)d=14;
+      if(d){window.scrollBy(0,d);place(drag.y);raf=requestAnimationFrame(step)}
+    };
+    step();
+  }
+  function finish(){
+    const c=drag.card;c.classList.remove("dragging");c.style.transform="";
+    applyOrder(orders,cards().map(x=>+x.dataset.i));
+    drag=null;saveOrders();render();
+  }
+  list.addEventListener("touchstart",e=>{
+    const hd=e.target.closest(HD);
+    if(!hd||drag||e.touches.length!==1)return;
+    const t=e.touches[0];sx=t.clientX;sy=t.clientY;pend=hd.closest(".order");
+    clearTimeout(timer);timer=setTimeout(()=>{if(pend){start(pend,sy);pend=null}},350);
+  },{passive:true});
+  document.addEventListener("touchmove",e=>{
+    const t=e.touches[0];
+    if(drag){e.preventDefault();place(t.clientY);autoScroll();return}
+    if(pend&&(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10)){clearTimeout(timer);pend=null}
+  },{passive:false});
+  const end=e=>{clearTimeout(timer);pend=null;if(drag){if(e.cancelable)e.preventDefault();finish()}};
+  document.addEventListener("touchend",end,{passive:false});
+  document.addEventListener("touchcancel",end);
+  list.addEventListener("contextmenu",e=>{if(e.target.closest(HD))e.preventDefault()});
+})();
+
 render();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});
 </script>
