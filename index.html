@@ -140,6 +140,19 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
     <textarea id="catalog" style="min-height:190px;font-size:14px"></textarea>
     <p class="muted" style="margin:4px 0 0">Mỗi dòng: từ khóa, từ khóa = giá. Dòng trên được ưu tiên. Tin nhắn ghi "3 to 2 bé" sẽ tự tính theo bảng này.</p>
     <button class="primary big" id="saveCfg">Lưu</button>
+    <b style="display:block;margin-top:16px">Đồng bộ online (Supabase)</b>
+    <div id="sbOut">
+      <label>Project URL</label><input id="sbUrl" autocomplete="off" placeholder="https://xxxx.supabase.co">
+      <label>Anon public key</label><input id="sbKey" autocomplete="off" placeholder="eyJ...">
+      <label>Email</label><input id="sbEmail" type="email" autocomplete="username">
+      <label>Mật khẩu</label><input id="sbPass" type="password" autocomplete="current-password">
+      <div class="row" style="margin-top:8px"><button class="primary big" id="sbLogin">Đăng nhập</button><button class="big" id="sbSignup">Tạo tài khoản</button></div>
+    </div>
+    <div id="sbIn" class="hidden">
+      <p id="sbWho" style="margin:6px 0"></p>
+      <div class="row"><button class="blue big" id="sbNow">⟳ Đồng bộ ngay</button><button class="big" id="sbLogout">Đăng xuất</button></div>
+    </div>
+    <p class="muted" id="sbMsg" style="margin:4px 0 0"></p>
     <b style="display:block;margin-top:16px">Sao lưu dữ liệu</b>
     <div class="row"><button class="big" id="bkCopy">📤 Sao lưu</button><button class="big" id="bkShow">📥 Khôi phục</button></div>
     <div id="bkBox" class="hidden"><textarea id="bkText" placeholder="Dán đoạn sao lưu vào đây"></textarea><button class="danger big" id="bkDo">Khôi phục (ghi đè dữ liệu máy này)</button></div>
@@ -388,7 +401,7 @@ function buildMsg(o,b){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
-function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}if(typeof noteChange==="function")noteChange(k)}
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 
 /* tài khoản QR cố định */
@@ -398,7 +411,7 @@ let cfgQ=load("ship_cfgQ",{bankIdx:OCB_IDX,account:""});
 let cfgB=load("ship_cfgB",{bankIdx:VCB_IDX,account:"",holder:""});
 function qrAcc(){const b=BANKS[cfgQ.bankIdx]||BANKS[0];return{name:b[0],bin:b[1],account:cfgQ.account}}
 function bankB(){const b=BANKS[cfgB.bankIdx]||BANKS[0];return{name:b[0],account:cfgB.account,holder:cfgB.holder}}
-function paintHdr(){$("hdrSub").textContent=cfgQ.account?qrAcc().name+" "+cfgQ.account:"Chưa cài TK"}
+function paintHdr(){$("hdrSub").textContent=(cfgQ.account?qrAcc().name+" "+cfgQ.account:"Chưa cài TK")+(typeof syncLabel==="function"?syncLabel():"")}
 function openCfg(){$("cfg").classList.remove("hidden");window.scrollTo(0,0)}
 let orders=load("ship_orders",[]);
 /* lịch sử: cất đơn + bảng tiền của ngày cũ thay vì xóa */
@@ -730,6 +743,126 @@ $("monCopy").onclick=async()=>{
     "ĐƯỢC HƯỞNG: "+mk(c.net)].join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
+
+/* ===== đồng bộ Supabase =====
+   Mỗi người dùng có các dòng trong bảng ship_kv: "cfg" (tài khoản, bảng giá) và "day:YYYY-MM-DD" (đơn + bảng tiền ngày đó).
+   m = thời điểm sửa (ms); bên nào mới hơn thì thắng. */
+let sbCfg=load("ship_sb",{url:"",key:""}),sb=null,sbUser=null,mtime=load("ship_mtime",{}),applying=false,syncTimer=0,lastSync=0,syncErr="",syncing=false;
+const CFG_KEYS=["ship_cfgQ","ship_cfgB","ship_catalog"];
+function markDirty(k){mtime[k]=Date.now();try{localStorage.setItem("ship_mtime",JSON.stringify(mtime))}catch(e){}if(sbUser){clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1500)}}
+var SYNC_READY=false;
+function noteChange(k){
+  if(!SYNC_READY||applying)return;
+  if(k==="ship_orders"||k==="ship_money")markDirty("day:"+today());
+  else if(CFG_KEYS.includes(k))markDirty("cfg");
+}
+function syncLabel(){
+  if(!SYNC_READY||!sbUser)return "";
+  if(syncErr)return " · ⚠ chưa đồng bộ";
+  if(syncing)return " · ☁ …";
+  if(!lastSync)return " · ☁";
+  const d=new Date(lastSync);return " · ☁ "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function localKeys(){
+  const ks=new Set(["cfg","day:"+today()]);
+  Object.keys(load("ship_hist",{})).forEach(d=>ks.add("day:"+d));
+  orders.forEach(o=>o.day&&ks.add("day:"+o.day));
+  return ks;
+}
+function localVal(k){
+  if(k==="cfg")return{cfgQ:load("ship_cfgQ",null),cfgB:load("ship_cfgB",null),catalog:load("ship_catalog",null)};
+  const D=k.slice(4),h=load("ship_hist",{})[D]||{},seen=new Set(),os=[];
+  (h.orders||[]).concat(orders.filter(o=>o.day===D)).forEach(o=>{if(!seen.has(o.id)){seen.add(o.id);os.push(o)}});
+  const mm=load("ship_money",null);
+  return{orders:os,money:(mm&&mm.day===D)?mm:(h.money||null)};
+}
+function hasContent(k){const v=localVal(k);return k==="cfg"?!!(v.cfgQ&&v.cfgQ.account):!!(v.orders.length||v.money)}
+function applyRemote(k,v){
+  applying=true;
+  try{
+    if(k==="cfg"){
+      if(v.cfgQ){cfgQ=v.cfgQ;store("ship_cfgQ",cfgQ)}
+      if(v.cfgB){cfgB=v.cfgB;store("ship_cfgB",cfgB)}
+      if(v.catalog){store("ship_catalog",v.catalog);setCatalog(v.catalog);$("catalog").value=v.catalog}
+      $("bankQ").value=cfgQ.bankIdx;$("accQ").value=cfgQ.account||"";$("bank").value=cfgB.bankIdx;$("acc").value=cfgB.account||"";$("holder").value=cfgB.holder||"";
+    }else{
+      const D=k.slice(4),os=(v&&v.orders)||[];
+      if(D===today()){
+        orders=orders.filter(o=>o.day!==D).concat(os);saveOrders();
+        if(v&&v.money){money=v.money;store("ship_money",money)}
+      }else{
+        const hist=load("ship_hist",{});hist[D]={orders:os,money:(v&&v.money)||null};store("ship_hist",hist);
+        orders=orders.filter(o=>o.day!==D);saveOrders();
+      }
+    }
+  }finally{applying=false}
+}
+function loadSbLib(){
+  return new Promise((ok,no)=>{
+    if(window.supabase&&window.supabase.createClient)return ok();
+    const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+    sc.onload=()=>ok();sc.onerror=()=>no(new Error("Không tải được thư viện Supabase (kiểm tra mạng)."));document.head.appendChild(sc);
+  });
+}
+async function sbInit(){
+  if(!sbCfg.url||!sbCfg.key)return false;
+  try{await loadSbLib();sb=window.supabase.createClient(sbCfg.url,sbCfg.key);
+    const r=await sb.auth.getSession();sbUser=r.data&&r.data.session?r.data.session.user:null;
+    sb.auth.onAuthStateChange((ev,ss)=>{sbUser=ss?ss.user:null;paintSb()});
+    paintSb();if(sbUser)syncNow();return true;
+  }catch(e){syncErr=e.message;paintSb();return false}
+}
+async function syncNow(){
+  if(!sb||!sbUser||syncing)return;
+  syncing=true;paintHdr();
+  try{
+    const r=await sb.from("ship_kv").select("k,m");if(r.error)throw r.error;
+    const rm={};(r.data||[]).forEach(x=>rm[x.k]=+x.m||0);
+    const keys=new Set([...localKeys(),...Object.keys(rm)]),pull=[],push=[];
+    keys.forEach(k=>{const lm=mtime[k]||0,R=rm[k];
+      if(R===undefined){if(lm||hasContent(k))push.push(k)}
+      else if(R>lm)pull.push(k);else if(lm>R)push.push(k);});
+    if(pull.length){
+      const g=await sb.from("ship_kv").select("k,v,m").in("k",pull);if(g.error)throw g.error;
+      (g.data||[]).forEach(x=>{applyRemote(x.k,x.v);mtime[x.k]=+x.m});
+    }
+    if(push.length){
+      const rows=push.map(k=>{const m=mtime[k]||1;mtime[k]=m;return{user_id:sbUser.id,k,v:localVal(k),m}});
+      const u=await sb.from("ship_kv").upsert(rows);if(u.error)throw u.error;
+    }
+    try{localStorage.setItem("ship_mtime",JSON.stringify(mtime))}catch(e){}
+    lastSync=Date.now();syncErr="";
+    if(pull.length){paintHdr();render()}
+  }catch(e){syncErr=(e&&e.message)||"lỗi";}
+  finally{syncing=false;paintHdr();paintSb()}
+}
+function paintSb(){
+  $("sbUrl").value=sbCfg.url||"";$("sbKey").value=sbCfg.key||"";
+  $("sbOut").classList.toggle("hidden",!!sbUser);$("sbIn").classList.toggle("hidden",!sbUser);
+  if(sbUser)$("sbWho").textContent="Đã đăng nhập: "+sbUser.email;
+  $("sbMsg").textContent=syncErr?"⚠ "+syncErr:(sbUser&&lastSync?"Đã đồng bộ lúc "+new Date(lastSync).toLocaleTimeString("vi-VN"):"");
+  paintHdr();
+}
+async function sbAuth(signup){
+  sbCfg={url:$("sbUrl").value.trim().replace(/\/+$/,""),key:$("sbKey").value.trim()};store("ship_sb",sbCfg);
+  if(!sbCfg.url||!sbCfg.key){$("sbMsg").textContent="Nhập Project URL và anon key trước.";return}
+  if(!sb&&!(await sbInit()))return;
+  const email=$("sbEmail").value.trim(),password=$("sbPass").value;
+  if(!email||password.length<6){$("sbMsg").textContent="Nhập email và mật khẩu (ít nhất 6 ký tự).";return}
+  $("sbMsg").textContent="Đang xử lý…";
+  const r=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
+  if(r.error){$("sbMsg").textContent="⚠ "+r.error.message;return}
+  sbUser=r.data.user&&r.data.session?r.data.user:null;
+  if(!sbUser){$("sbMsg").textContent="Đã tạo tài khoản. Nếu Supabase yêu cầu xác nhận email, mở email để xác nhận rồi bấm Đăng nhập.";return}
+  $("sbPass").value="";paintSb();syncNow();
+}
+$("sbLogin").onclick=()=>sbAuth(false);
+$("sbSignup").onclick=()=>sbAuth(true);
+$("sbNow").onclick=()=>syncNow();
+$("sbLogout").onclick=async()=>{if(sb)await sb.auth.signOut();sbUser=null;paintSb()};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncNow()});
+setInterval(()=>{if(!document.hidden)syncNow()},30000);
+SYNC_READY=true;paintSb();sbInit();
 
 /* sao lưu / khôi phục */
 const BK_KEYS=["ship_orders","ship_hist","ship_money","ship_cfgQ","ship_cfgB","ship_catalog"];

@@ -1,5 +1,5 @@
 // Cache để mở nhanh và chạy khi mất mạng
-const V = "qr-ship-v6";
+const V = "qr-ship-v7";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -18,7 +18,7 @@ self.addEventListener("fetch", e => {
   const r = e.request;
   if (r.method !== "GET") return;
   const u = new URL(r.url);
-  const isLib = /qrcode-generator/.test(u.href);
+  const isLib = /qrcode-generator|supabase-js/.test(u.href);
   if (u.origin !== location.origin && !isLib) return;
   // Trang chính: lấy bản mới từ mạng trước, mất mạng mới dùng bản lưu
   if (r.mode === "navigate" || u.pathname.endsWith(".html") || u.pathname.endsWith("/")) {
