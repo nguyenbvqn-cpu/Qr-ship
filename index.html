@@ -60,7 +60,7 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .hidden{display:none!important}
 #ov{position:fixed;inset:0;background:#fff;z-index:10;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:pan-y}
 #ov .top{width:100%;display:flex;justify-content:space-between;align-items:center}
-#ov .qr{width:min(92vw,62vh);aspect-ratio:1;margin:6px 0}
+#ov .qr{width:min(80vw,54vh);aspect-ratio:1;margin:6px 0}
 #ov .qr svg{width:100%;height:100%;display:block}
 #ov .amt{font-size:34px;font-weight:800;color:#0b7a43}
 #ov .content{font-size:20px;font-weight:700}
@@ -354,8 +354,8 @@ function render(){
     const showPhone=compact?open:(!o.phone||editing.has(o.id));
     const nt=noteText(o);
     const edit=open?`<div class="row">
-        <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
         <div><label>Tiền ship</label><div class="stepper"><button data-a="shipdn">−</button><b>${fmt(o.ship)}</b><button data-a="shipup">+</button></div></div>
+        <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
       </div>`+(showPhone?`<label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}">`:"")+(nt?`<div class="note">${esc(nt)}</div>`:"")+extra:"";
     const sub=compact?"hàng "+fmtK(o.goods||0)+" + ship "+fmtK(o.ship||0):(o.msgSent?"không cộng lẻ":"đã +1đ lẻ");
     return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">

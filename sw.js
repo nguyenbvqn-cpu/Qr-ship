@@ -1,5 +1,5 @@
 // Cache để mở nhanh và chạy khi mất mạng
-const V = "qr-ship-v3";
+const V = "qr-ship-v4";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
