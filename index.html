@@ -702,10 +702,10 @@ $("monCopy").onclick=async()=>{
 function kindOf(o){return o.cash?"tm":(o.msgSent?"sms":"qr")}
 function recvAmount(o){return o.cash||o.msgSent?msgAmountOf(o):amountOf(o)}
 function summary(){
-  const g={qr:{n:0,v:0},sms:{n:0,v:0},tm:{n:0,v:0}},due={n:0,v:0};let ship=0,goods=0;
+  const g={qr:{n:0,v:0},sms:{n:0,v:0},tm:{n:0,v:0}},due={n:0,v:0,ship:0};let ship=0,goods=0;
   orders.forEach(o=>{
     if(o.paid){const k=kindOf(o);g[k].n++;g[k].v+=recvAmount(o);ship+=o.ship||0;goods+=o.goods||0}
-    else{due.n++;due.v+=recvAmount(o)}
+    else{due.n++;due.v+=recvAmount(o);due.ship+=o.ship||0}
   });
   const tot=g.qr.v+g.sms.v+g.tm.v,cnt=g.qr.n+g.sms.n+g.tm.n;
   return{g,due,ship,goods,tot,cnt};
@@ -718,7 +718,7 @@ function sumText(x){
     L("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v)),
     L("TỔNG ĐÃ THU ("+x.cnt+" đơn)",mk(x.tot)),
     L("Trong đó tiền hàng",mk(x.goods)),
-    L("Tiền ship",mk(x.ship))].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",mk(x.due.v))]:[]).join("\n");
+    L("Tiền ship",mk(x.ship)+(x.due.ship?" + "+mk(x.due.ship)+" chưa thu":""))].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",mk(x.due.v))]:[]).join("\n");
 }
 function openSum(){
   const x=summary(),R=(a,b,c)=>'<tr'+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
@@ -729,7 +729,7 @@ function openSum(){
     R("Tổng đã thu ("+x.cnt+" đơn)",mk(x.tot),"big")+
     "</table>"+'<table class="sumt">'+
     R("Trong đó tiền hàng",mk(x.goods))+
-    R("Tiền ship",mk(x.ship))+
+    R("Tiền ship",mk(x.ship)+(x.due.ship?' <span style="color:#b42318;font-weight:600">+ '+mk(x.due.ship)+" chưa thu</span>":""))+
     (x.due.n?R('<span style="color:#b42318">Chưa thu ('+x.due.n+" đơn)</span>",'<span style="color:#b42318">'+mk(x.due.v)+"</span>"):"")+
     "</table>"+'<p class="muted">QR tính cả 1đ lẻ. Đơn chưa thu không cộng vào tổng.</p>';
   $("sumOv").classList.remove("hidden");
