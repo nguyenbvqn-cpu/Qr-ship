@@ -30,9 +30,21 @@ button.big,a.btn.big{width:100%;padding:14px;font-size:17px;margin-top:8px}
 .phone a{color:inherit;text-decoration:none}
 .total{font-size:20px;font-weight:700;color:#0b7a43;text-align:right}
 .muted{color:#6b7280;font-size:13px}
-.note{white-space:pre-wrap;font-size:13px;color:#555;background:#f7f8fa;border-radius:8px;padding:8px;margin:8px 0;max-height:84px;overflow:auto}
+.note{white-space:pre-wrap;font-size:14px;color:#555;background:#f7f8fa;border-radius:8px;padding:6px 8px;margin:6px 0 0}
 .order.paid{opacity:.6}
-.arw{padding:6px 16px;font-size:14px;line-height:1;margin-left:6px}
+.arw{padding:8px 12px;font-size:13px;line-height:1}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hd .phone{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.note.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:none}
+.line{display:flex;align-items:center;gap:8px;margin:8px 0}
+.stepper.sm{gap:4px}
+.stepper.sm button{width:36px;padding:7px 0;font-size:18px}
+.stepper.sm b{min-width:70px;font-size:14px}
+.arws{margin-left:auto;display:flex;gap:4px}
+.acts{display:flex;gap:6px}
+.acts>*{flex:1;padding:12px 4px;white-space:nowrap;font-size:15px}
+.acts .more{flex:0 0 46px;font-size:18px;padding:10px 0}
+.panel{margin-top:10px;padding-top:6px;border-top:1px solid #d5d8de}
 .arw:disabled{opacity:.3}
 .order.paid .total{text-decoration:line-through}
 .badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:#eceef1;color:#444;margin-top:2px}
@@ -332,38 +344,39 @@ function render(){
     $("list").innerHTML='<div class="card muted">'+msg+"</div>";return;
   }
   $("list").innerHTML=(tab==="t"?tmSummary(items):"")+items.map(([o,i],k)=>{
-    const st=stageOf(o),compact=st!=="n",open=!compact||editing.has(o.id);
-    const smsBtn=(t,a)=>'<a class="btn blue" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
-    const sm=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
-    const paidBtn='<button class="primary" data-a="paid">'+(o.paid?(st==="m"?"Bỏ đã ck":"Bỏ đã thu"):(st==="m"?"Đã ck ✓":"Đã thu QR"))+"</button>";
-    const cashBtn='<button class="tm" data-a="cash">Đã thu TM</button>';
-    let acts,extra="";
-    if(st==="m"){
-      acts='<div class="row">'+smsBtn("Nhắn lại","resend")+paidBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("photo","📷 Chụp ảnh","blue")+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
-      extra='<div class="row smrow" style="margin-top:8px">'+sm("show","Hiện QR")+sm("back","Về Mới")+"</div>";
-    }else if(st==="q"){
-      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row smrow" style="margin-top:6px">'+paidBtn.replace('class="primary"','')+cashBtn+'</div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
-      extra='<div class="row smrow" style="margin-top:8px">'+sm("back","Về Mới")+"</div>";
-    }else if(st==="t"){
-      acts='<div class="row"><button class="primary" data-a="uncash">Bỏ thu TM</button></div><div class="row smrow" style="margin-top:6px">'+sm("edit",open?"Đóng sửa":"Sửa")+sm("del","Xóa","danger")+"</div>";
-    }else{
-      acts='<div class="row"><button class="primary" data-a="show">Hiện QR</button>'+smsBtn("Nhắn STK","msg")+'</div><div class="row smrow" style="margin-top:8px">'+paidBtn.replace('class="primary"','')+cashBtn+'<button class="danger" data-a="del">Xóa</button></div>';
-    }
+    const st=stageOf(o),open=editing.has(o.id)||!o.phone;
+    const B=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
+    const S=(t,a,c)=>'<a class="btn '+(c||"blue")+'" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
+    const more=B("more",open?"✕":"⋯","more");
+    let main,sec="";
+    if(st==="n"){main=B("show","Hiện QR","primary")+S("Nhắn STK","msg")+more;sec=B("paid",o.paid?"Bỏ đã thu":"Đã thu QR")+B("cash","Đã thu TM","tm")}
+    else if(st==="q"){main=B("show","Hiện QR","primary")+B("paid",o.paid?"Bỏ đã thu":"Đã thu QR")+B("cash","Thu TM","tm")+more;sec=S("Nhắn STK","msg","")+B("back","Về Mới")}
+    else if(st==="m"){main=S("Nhắn lại","resend")+B("paid",o.paid?"Bỏ đã ck":"Đã ck ✓","primary")+B("photo","📷")+more;sec=B("show","Hiện QR")+B("back","Về Mới")}
+    else{main=B("uncash","Bỏ thu TM","primary")+more}
     const ph=(photos[String(o.id)]||[]);
-    const thumbs=(st==="m"&&ph.length)?'<div class="thumbs">'+ph.map((u,k)=>'<img src="'+u+'" data-ph="'+o.id+"|"+k+'" alt="ảnh">').join("")+"</div>":"";
-    const showPhone=compact?open:(!o.phone||editing.has(o.id));
+    const thumbs=(st==="m"&&ph.length)?'<div class="thumbs">'+ph.map((u,j)=>'<img src="'+u+'" data-ph="'+o.id+"|"+j+'" alt="ảnh">').join("")+"</div>":"";
     const nt=noteText(o);
-    const edit=open?`<div class="row">
-        <div><label>Tiền ship</label><div class="stepper"><button data-a="shipdn">−</button><b>${fmt(o.ship)}</b><button data-a="shipup">+</button></div></div>
-        <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
-      </div>`+(showPhone?`<label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}">`:"")+(nt?`<div class="note">${esc(nt)}</div>`:"")+extra:"";
-    const sub=compact?"hàng "+fmtK(o.goods||0)+" + ship "+fmtK(o.ship||0):(o.msgSent?"không cộng lẻ":"đã +1đ lẻ");
+    const bd=(st==="n"&&!o.paid)?"":badge(o);
+    const phone=o.phone?'<a href="tel:'+esc(o.phone)+'">📞 '+esc(o.phone)+"</a>":'<span class="muted">Chưa có SĐT</span>';
+    const panel=open?`<div class="panel">
+        <div class="row">
+          <div><label>Tiền hàng</label><input data-f="goods" inputmode="numeric" value="${o.goods||0}"></div>
+          <div><label>SĐT khách</label><input data-f="phone" inputmode="numeric" value="${esc(o.phone||"")}"></div>
+        </div>
+        <div class="acts" style="margin-top:8px">${sec}${B("del","Xóa","danger")}</div>
+      </div>`:"";
     return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
-      <div class="row" style="align-items:flex-start">
-        <div style="flex:1 1 auto;min-width:0"><div class="phone">${o.phone?'<a href="tel:'+esc(o.phone)+'" style="display:inline-block;padding:2px 0">📞 '+esc(o.phone)+"</a>":"(chưa có SĐT)"}</div>${badge(o)}${compact?"":'<button data-a="edit" style="padding:2px 8px;font-size:12px;margin-left:6px">✎ SĐT</button>'}</div>
-        <div style="flex:0 0 auto"><div class="total">${fmt(shownAmount(o))}đ</div><div class="muted" style="text-align:right">${sub}</div><div style="text-align:right;margin-top:6px"><button class="arw" data-a="up"${k===0?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1?" disabled":""}>▼</button></div></div>
+      <div class="hd"><div class="phone">${phone}</div><div class="total">${fmt(shownAmount(o))}đ</div></div>
+      ${bd?'<div style="margin-top:2px">'+bd+"</div>":""}
+      ${nt?'<div class="note'+(open?"":" clamp")+'">'+esc(nt)+"</div>":""}
+      <div class="line">
+        <div class="stepper sm"><button data-a="shipdn">−</button><b>ship ${fmtK(o.ship||0)}</b><button data-a="shipup">+</button></div>
+        <span class="muted">hàng ${fmtK(o.goods||0)}</span>
+        <span class="arws"><button class="arw" data-a="up"${k===0?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1?" disabled":""}>▼</button></span>
       </div>
-      ${edit}${thumbs}${acts}
+      ${thumbs}
+      <div class="acts">${main}</div>
+      ${panel}
     </div>`}).join("");
 }
 $("list").addEventListener("input",e=>{
@@ -382,7 +395,7 @@ $("list").addEventListener("click",e=>{
   else if(a==="cash"){o.cash=true;o.paid=true;saveOrders();render()}
   else if(a==="uncash"){o.cash=false;o.paid=false;saveOrders();render()}
   else if(a==="up"||a==="down"){moveOrder(i,a==="up"?-1:1)}
-  else if(a==="edit"){editing.has(o.id)?editing.delete(o.id):editing.add(o.id);render()}
+  else if(a==="more"||a==="edit"){editing.has(o.id)?editing.delete(o.id):editing.add(o.id);render()}
   else if(a==="photo"){camTarget=o.id;$("cam").value="";$("cam").click()}
   else if(a==="msg"||a==="resend"){
     if(!o.phone){e.preventDefault();toast("Đơn chưa có SĐT khách, hãy nhập SĐT trước.");return}

@@ -1,5 +1,5 @@
 // Cache để mở nhanh và chạy khi mất mạng
-const V = "qr-ship-v5";
+const V = "qr-ship-v6";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -20,6 +20,17 @@ self.addEventListener("fetch", e => {
   const u = new URL(r.url);
   const isLib = /qrcode-generator/.test(u.href);
   if (u.origin !== location.origin && !isLib) return;
+  // Trang chính: lấy bản mới từ mạng trước, mất mạng mới dùng bản lưu
+  if (r.mode === "navigate" || u.pathname.endsWith(".html") || u.pathname.endsWith("/")) {
+    e.respondWith(
+      fetch(r).then(res => {
+        const cp = res.clone();
+        caches.open(V).then(c => c.put(r, cp));
+        return res;
+      }).catch(() => caches.match(r, { ignoreSearch: true }).then(h => h || caches.match("index.html")))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(r, { ignoreSearch: true }).then(hit => {
       const net = fetch(r)
