@@ -118,9 +118,11 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
   </section>
 
   <section class="card">
-    <b>Dán tin nhắn Zalo của đơn</b>
-    <textarea id="paste" placeholder="Dán nguyên tin nhắn: SĐT, địa chỉ, mặt hàng, tiền hàng…"></textarea>
-    <div class="row"><button class="blue big" id="pasteBtn">📋 Dán</button><button class="primary big" id="add">+ Thêm đơn</button></div>
+    <div class="row" id="inBar"><button class="blue big" id="pasteBtn">📋 Dán đơn</button><button class="big" id="typeBtn">✎ Nhập</button></div>
+    <div id="inBox" class="hidden">
+      <textarea id="paste" placeholder="Dán hoặc gõ tin nhắn đơn, sửa xong bấm Tạo đơn"></textarea>
+      <div class="row"><button class="blue big" id="pasteIn">📋 Dán</button><button class="primary big" id="add">+ Tạo đơn</button><button class="big" id="inClose" style="flex:0 0 56px">✕</button></div>
+    </div>
   </section>
 
   <div class="tabs"><button id="tabN" class="tab on">Mới</button><button id="tabQ" class="tab">QR</button><button id="tabM" class="tab">SMS</button><button id="tabT" class="tab">TM</button></div>
@@ -308,8 +310,13 @@ if(!cfgQ.account)$("cfg").classList.remove("hidden");
 $("add").onclick=()=>{
   const t=$("paste").value.trim();if(!t)return;
   splitMessages(t).forEach(m=>{const o=parseOrder(m);o.id=Date.now()+Math.random();o.paid=false;o.msgSent=false;o.qrShown=false;o.day=today();orders.push(o)});
-  $("paste").value="";saveOrders();render();
+  $("paste").value="";saveOrders();render();closeIn();
+  if(tab!=="n")setTab("n");
 };
+function openIn(){$("inBox").classList.remove("hidden");$("inBar").classList.add("hidden");$("paste").focus()}
+function closeIn(){$("inBox").classList.add("hidden");$("inBar").classList.remove("hidden")}
+$("typeBtn").onclick=openIn;
+$("inClose").onclick=()=>{$("paste").value="";closeIn()};
 let armed=0;
 $("clearAll").onclick=()=>{
   const n=Date.now();
@@ -604,9 +611,17 @@ function pasteInto(id,after){
   if(!navigator.clipboard||!navigator.clipboard.readText){hintPaste(el);return}
   navigator.clipboard.readText().then(t=>{if(t&&t.trim()){el.value=t;after()}else hintPaste(el)}).catch(()=>hintPaste(el));
 }
-$("pasteBtn").onclick=()=>pasteInto("paste",()=>$("add").onclick());
+$("pasteBtn").onclick=()=>{
+  const fail=()=>{openIn();toast("Không đọc được nội dung đã sao chép. Nhấn giữ vào ô rồi chọn Dán, sửa xong bấm Tạo đơn.")};
+  if(!navigator.clipboard||!navigator.clipboard.readText){fail();return}
+  navigator.clipboard.readText().then(t=>{
+    if(!t||!t.trim()){toast("Chưa có nội dung nào được sao chép.");return}
+    const n0=orders.length;$("paste").value=t;$("add").onclick();
+    toast("✓ Đã tạo "+(orders.length-n0)+" đơn.");
+  }).catch(fail);
+};
+$("pasteIn").onclick=()=>pasteInto("paste",()=>{});
 $("pasteBank").onclick=()=>pasteInto("bankMsg",()=>$("confirm").onclick());
-$("paste").addEventListener("paste",()=>setTimeout(()=>{if($("paste").value.trim())$("add").onclick()},60));
 $("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.trim())$("confirm").onclick()},60));
 
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
