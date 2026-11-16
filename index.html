@@ -143,10 +143,8 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
     <b style="display:block;margin-top:16px">Đồng bộ online (Supabase)</b>
     <div id="sbOut">
       <label>Project URL</label><input id="sbUrl" autocomplete="off" placeholder="https://xxxx.supabase.co">
-      <label>Anon public key</label><input id="sbKey" autocomplete="off" placeholder="eyJ...">
-      <label>Email</label><input id="sbEmail" type="email" autocomplete="username">
-      <label>Mật khẩu</label><input id="sbPass" type="password" autocomplete="current-password">
-      <div class="row" style="margin-top:8px"><button class="primary big" id="sbLogin">Đăng nhập</button><button class="big" id="sbSignup">Tạo tài khoản</button></div>
+      <label>Publishable key (anon)</label><input id="sbKey" autocomplete="off" placeholder="sb_publishable_...">
+      <button class="primary big" id="sbLogin" style="margin-top:8px">Đăng nhập bằng Google</button>
     </div>
     <div id="sbIn" class="hidden">
       <p id="sbWho" style="margin:6px 0"></p>
@@ -806,8 +804,9 @@ function loadSbLib(){
 }
 async function sbInit(){
   if(!sbCfg.url||!sbCfg.key)return false;
-  try{await loadSbLib();sb=window.supabase.createClient(sbCfg.url,sbCfg.key);
-    const r=await sb.auth.getSession();sbUser=r.data&&r.data.session?r.data.session.user:null;
+  try{await loadSbLib();sb=window.supabase.createClient(sbCfg.url,sbCfg.key,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    const r=await sb.auth.getSession();if(r.error)syncErr=r.error.message;
+    sbUser=r.data&&r.data.session?r.data.session.user:null;
     sb.auth.onAuthStateChange((ev,ss)=>{sbUser=ss?ss.user:null;paintSb()});
     paintSb();if(sbUser)syncNow();return true;
   }catch(e){syncErr=e.message;paintSb();return false}
@@ -843,24 +842,25 @@ function paintSb(){
   $("sbMsg").textContent=syncErr?"⚠ "+syncErr:(sbUser&&lastSync?"Đã đồng bộ lúc "+new Date(lastSync).toLocaleTimeString("vi-VN"):"");
   paintHdr();
 }
-async function sbAuth(signup){
-  sbCfg={url:$("sbUrl").value.trim().replace(/\/+$/,""),key:$("sbKey").value.trim()};store("ship_sb",sbCfg);
-  if(!sbCfg.url||!sbCfg.key){$("sbMsg").textContent="Nhập Project URL và anon key trước.";return}
-  if(!sb&&!(await sbInit()))return;
-  const email=$("sbEmail").value.trim(),password=$("sbPass").value;
-  if(!email||password.length<6){$("sbMsg").textContent="Nhập email và mật khẩu (ít nhất 6 ký tự).";return}
-  $("sbMsg").textContent="Đang xử lý…";
-  const r=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
-  if(r.error){$("sbMsg").textContent="⚠ "+r.error.message;return}
-  sbUser=r.data.user&&r.data.session?r.data.user:null;
-  if(!sbUser){$("sbMsg").textContent="Đã tạo tài khoản. Nếu Supabase yêu cầu xác nhận email, mở email để xác nhận rồi bấm Đăng nhập.";return}
-  $("sbPass").value="";paintSb();syncNow();
+/* Đăng nhập Google: chuyển sang trang Google, xong quay về đúng trang này; supabase-js tự đọc phiên từ địa chỉ trả về. */
+async function sbAuth(){
+  const url=$("sbUrl").value.trim().replace(/\/+$/,""),key=$("sbKey").value.trim();
+  if(!url||!key){$("sbMsg").textContent="Nhập Project URL và anon key trước.";return}
+  if(!sb||url!==sbCfg.url||key!==sbCfg.key){sbCfg={url,key};store("ship_sb",sbCfg);sb=null;syncErr="";if(!(await sbInit()))return}
+  if(sbUser){paintSb();syncNow();return}
+  $("sbMsg").textContent="Đang mở Google…";
+  const r=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:"select_account"}}});
+  if(r.error)$("sbMsg").textContent="⚠ "+r.error.message;
 }
-$("sbLogin").onclick=()=>sbAuth(false);
-$("sbSignup").onclick=()=>sbAuth(true);
+$("sbLogin").onclick=()=>sbAuth();
 $("sbNow").onclick=()=>syncNow();
 $("sbLogout").onclick=async()=>{if(sb)await sb.auth.signOut();sbUser=null;paintSb()};
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncNow()});
+/* quay lại app (vd. sau khi đăng nhập Google ở tab khác): đọc lại phiên đã lưu */
+async function sbRecheck(){
+  if(!sb||sbUser)return;
+  try{const r=await sb.auth.getSession();if(r.data&&r.data.session){sbUser=r.data.session.user;paintSb()}}catch(e){}
+}
+document.addEventListener("visibilitychange",async()=>{if(!document.hidden){await sbRecheck();syncNow()}});
 setInterval(()=>{if(!document.hidden)syncNow()},30000);
 SYNC_READY=true;paintSb();sbInit();
 

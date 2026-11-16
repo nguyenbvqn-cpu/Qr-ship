@@ -36,9 +36,18 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 ## Lưu trữ
 - localStorage: `ship_orders`, `ship_hist`, `ship_money`, `ship_cfgQ`, `ship_cfgB`, `ship_catalog`, `ship_photos`, `ship_tab`,
   `ship_sb` (URL + anon key Supabase), `ship_mtime` (thời điểm sửa từng khóa đồng bộ).
-- Đồng bộ Supabase (tùy chọn, đăng nhập email): bảng `ship_kv(user_id, k, v jsonb, m bigint)` có RLS theo `auth.uid()`.
+- Đồng bộ Supabase (tùy chọn, đăng nhập Google): bảng `ship_kv(user_id, k, v jsonb, m bigint)` có RLS theo `auth.uid()`.
+  Chỉ một người dùng (chủ app). Người dùng không muốn đăng nhập email/mật khẩu; đã chọn Google thay vì bỏ hẳn đăng nhập
+  (bỏ hẳn thì key thành mật khẩu duy nhất cho SĐT khách + số TK). `signInWithOAuth` google, flowType implicit,
+  redirectTo = trang hiện tại; khi quay lại app (visibilitychange) đọc lại phiên.
   Khóa `cfg` và `day:YYYY-MM-DD`; bên có `m` lớn hơn thắng. Đồng bộ khi sửa (1,5 giây), khi mở lại app, mỗi 30 giây.
-  Trạng thái: người dùng có thể chưa tạo project Supabase / chưa chạy SQL.
+  SQL tạo bảng + RLS + grant: `supabase.sql` (chạy 1 lần trong SQL Editor; project mới của Supabase có thể không tự
+  cấp quyền Data API cho bảng mới nên file có `grant` rõ ràng).
+  Trạng thái (15/11/2026): đã tạo project Supabase `qr-ship`, đã chạy `supabase.sql`, Site URL = trang GitHub Pages,
+  Redirect URLs có `https://nguyenbvqn-cpu.github.io/Qr-ship/**`. Google provider cần OAuth client của Google Cloud
+  (redirect URI `https://<project>.supabase.co/auth/v1/callback`); để consent screen ở chế độ Testing với email chủ app
+  là test user để chỉ người đó đăng nhập được. App dùng publishable key (`sb_publishable_…`).
+  URL + key nhập trong app, không ghi vào repo.
 
 ## Cách kiểm tra
 - Không có test tự động. Cách đã dùng: tách khối CORE chạy bằng Node để thử `parseOrder`/`matchBank`/`buildVietQR`
