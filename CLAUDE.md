@@ -26,6 +26,9 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - Đơn dán từ Zalo: lấy SĐT, tiền hàng, ship (mặc định 20k, nút −/+ bước 5k).
   - "10 luộc 100k" = 10 × 100k; "đơn này / tiền đồ là 165k" = tổng tiền hàng; "65l" là gõ nhầm "65k";
     giá không ghi k trên dòng số lượng ("1 trộn 65") hiểu là nghìn.
+  - "ck/thu/cod 150k" = tổng tiền khách trả (hàng = tổng − ship). Các từ này chỉ tính khi đứng riêng; không dùng `\b`
+    trong regex vì JS coi chữ có dấu là ranh giới ("1 luôck 100k" từng bị hiểu là "ck 100k").
+    "20k ship" = ship 20k, nhưng "100k ship 25k" thì 100k là tiền hàng.
   - Không ghi giá thì tra bảng giá (sửa được trong ⚙), dòng trên ưu tiên trước:
     bé/nhỏ 55k · sốt me/me 55k · rút xương/trộn 65k · ớt xanh/cay 75k · lắc/cóc 55k · mắm 55k · to 100k · luộc/thảo quả 100k.
 - QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ.

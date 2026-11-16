@@ -369,12 +369,14 @@ function parseOrder(text,defShip){
     lastEnd=end;
     const seg0=rest.slice(lineStart,idx).split(/[,;+]/).pop();
     const qtyLine=/^\s*(\d{1,2})\s+\D*$/.test(seg0);
-    const kw=/tổng|tong|đơn này|don nay|đơn là|tiền đồ|tien do|tiền hàng|tien hang|ship|\bck\b|\bthu\b/i.test(before);
+    // "ck", "thu", "cod", "hết" phải đứng riêng (\b của JS coi chữ có dấu là ranh giới: "luôck" sẽ khớp nhầm "ck")
+    const kw=/tổng|tong|đơn này|don nay|đơn là|tiền đồ|tien do|tiền hàng|tien hang|ship|(?<![\p{L}\d])(?:ck|thu)(?![\p{L}\d])/iu.test(before);
     if(!unit&&!thou&&v>=5&&v<1000&&!/^\s*[\/\-]/.test(after)&&/^\s*$/.test(after)&&(qtyLine||kw))v*=1000; // giá không ghi k
     if(v<1000||v>1e8)continue;
-    const isShip=/ship|vận chuyển|van chuyen|phí/i.test(shipBefore)||/^\s*(ship|vận chuyển)/i.test(after);
-    const isTotal=!isShip&&/tổng|tong|total|\bck\b|chuyển khoản|\bthu\b|\bcod\b/i.test(before);
-    const isGoodsTotal=!isShip&&!isTotal&&/đơn này|đơn là|don nay|tiền đồ|tien do|tiền hàng|tien hang|tất cả|tat ca|\bhết\b|cộng|thành tiền|thanh tien/i.test(before);
+    // "20k ship" = ship 20k; nhưng "100k ship 25k" thì 100k là tiền hàng
+    const isShip=/ship|vận chuyển|van chuyen|phí/i.test(shipBefore)||/^\s*(ship|vận chuyển)(?!\s*[:=]?\s*\d)/i.test(after);
+    const isTotal=!isShip&&/tổng|tong|total|chuyển khoản|(?<![\p{L}\d])(?:ck|thu|cod)(?![\p{L}\d])/iu.test(before);
+    const isGoodsTotal=!isShip&&!isTotal&&/đơn này|đơn là|don nay|tiền đồ|tien do|tiền hàng|tien hang|tất cả|tat ca|(?<![\p{L}\d])hết(?![\p{L}\d])|cộng|thành tiền|thanh tien/iu.test(before);
     const seg=rest.slice(lineStart,idx).split(/[,;+]/).pop();
     const qm=seg.match(/^\s*(\d{1,2})\s+\D*$/);
     const mult=qm?parseInt(qm[1],10):1;
