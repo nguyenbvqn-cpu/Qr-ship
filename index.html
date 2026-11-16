@@ -113,6 +113,10 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .sumt tr.big td{font-size:18px;color:#0b7a43;border-bottom:0}
 #toast{position:fixed;left:8px;right:8px;top:8px;z-index:30;background:#16181d;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;white-space:pre-wrap;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #toast button,#toast a.btn{padding:8px 10px;font-size:14px}
+html.past header{background:#b45309}
+#dayBar{display:flex;align-items:center;gap:8px}
+#dayBar span{flex:1;font-weight:600}
+#dayBar button{flex:0 0 auto;padding:9px 12px}
 #lock{display:none}
 html.locked body{overflow:hidden}
 html.locked #lock{position:fixed;inset:0;z-index:60;background:#0b7a43;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
@@ -137,6 +141,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <div class="hb"><button id="btnMoney">💰 Tiền</button><button id="btnSum">📊 Tổng</button><button id="btnHist" aria-label="Lịch sử">📅</button><button id="btnCfg" aria-label="Cài đặt">⚙</button></div>
 </header>
 <main>
+  <div id="dayBar" class="warn hidden"><span id="dayBarTxt"></span><button class="primary" id="dayBack">Về hôm nay</button></div>
   <div id="libWarn" class="warn hidden">Chưa tải được thư viện tạo QR. Hãy bật mạng và tải lại trang.</div>
 
   <section id="cfg" class="card hidden">
@@ -218,7 +223,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <button class="big" id="dupCancel">Hủy</button>
 </div></div>
 <div id="monOv" class="hidden"><div class="sheet">
-  <div class="row" style="align-items:center"><b style="font-size:18px">Tiền được hưởng hôm nay</b><button id="monClose" style="flex:0 0 auto">✕</button></div>
+  <div class="row" style="align-items:center"><b style="font-size:18px" id="monTitle">Tiền được hưởng hôm nay</b><button id="monClose" style="flex:0 0 auto">✕</button></div>
   <table class="den">
     <thead><tr><th>Mệnh giá</th><th>Đầu ngày<br><small>số tờ</small></th><th>Cuối ngày<br><small>số tờ</small></th></tr></thead>
     <tbody id="denBody"></tbody>
@@ -238,10 +243,14 @@ if(!hasToken())document.documentElement.classList.add("locked");
 <div id="histOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><button id="hPrev" style="flex:0 0 48px">‹</button><b id="hTitle" style="text-align:center;font-size:17px"></b><button id="hNext" style="flex:0 0 48px">›</button><button id="histClose" style="flex:0 0 48px">✕</button></div>
   <div id="histBody"></div>
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e3e5e8">
+    <b>Nhập / sửa đơn cho ngày đã qua</b>
+    <div class="row" style="margin-top:6px"><input type="date" id="hDate"><button class="blue" id="hOpenDay" style="flex:0 0 auto">Mở ngày</button></div>
+  </div>
   <button class="primary big" id="hCopy">Sao chép tổng tháng</button>
 </div></div>
 <div id="sumOv" class="hidden"><div class="sheet">
-  <div class="row" style="align-items:center"><b style="font-size:18px">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
+  <div class="row" style="align-items:center"><b style="font-size:18px" id="sumTitle">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
   <div id="sumBody"></div>
   <div class="row"><button class="primary big" id="sumCopy">Sao chép bảng tổng</button></div>
 </div></div>
@@ -414,7 +423,11 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}if(typeof noteChange==="function")noteChange(k)}
-function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function realToday(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+/* WORKDAY: đang mở một ngày đã qua để nhập/sửa đơn. Không lưu lại: mở lại app là về hôm nay. */
+let WORKDAY=null;
+function today(){return WORKDAY||realToday()}
+function dayName(t){t=t||today();return t===realToday()?"hôm nay":"ngày "+(+t.slice(8))+"/"+(+t.slice(5,7))}
 
 /* tài khoản QR cố định */
 const OCB_IDX=BANKS.findIndex(b=>b[0]==="OCB");
@@ -423,7 +436,7 @@ let cfgQ=load("ship_cfgQ",{bankIdx:OCB_IDX,account:""});
 let cfgB=load("ship_cfgB",{bankIdx:VCB_IDX,account:"",holder:""});
 function qrAcc(){const b=BANKS[cfgQ.bankIdx]||BANKS[0];return{name:b[0],bin:b[1],account:cfgQ.account}}
 function bankB(){const b=BANKS[cfgB.bankIdx]||BANKS[0];return{name:b[0],account:cfgB.account,holder:cfgB.holder}}
-function paintHdr(){$("hdrSub").textContent=(cfgQ.account?qrAcc().name+" "+cfgQ.account:"Chưa cài TK")+(typeof syncLabel==="function"?syncLabel():"")}
+function paintHdr(){$("hdrSub").textContent=(WORKDAY?"📅 "+dayName(WORKDAY)+" · ":"")+(cfgQ.account?qrAcc().name+" "+cfgQ.account:"Chưa cài TK")+(typeof syncLabel==="function"?syncLabel():"")}
 function openCfg(){$("cfg").classList.remove("hidden");window.scrollTo(0,0)}
 let orders=load("ship_orders",[]);
 /* lịch sử: cất đơn + bảng tiền của ngày cũ thay vì xóa */
@@ -442,6 +455,7 @@ let cur=0;
 function purge(){
   if(orders.some(o=>o.day!==today()))archiveOld();
   const t=today();const n=orders.length;orders=orders.filter(o=>o.day===t);if(orders.length!==n)saveOrders();
+  if(WORKDAY)return;  /* đang mở ngày cũ: giữ nguyên ảnh của đơn hôm nay */
   const ids=new Set(orders.map(o=>String(o.id)));let ch=false;
   Object.keys(photos).forEach(k=>{if(!ids.has(k)){delete photos[k];ch=true}});
   if(ch)savePhotos();
@@ -497,9 +511,9 @@ $("inClose").onclick=()=>{$("paste").value="";closeIn()};
 let armed=0;
 $("clearAll").onclick=()=>{
   const n=Date.now();
-  if(n-armed<4000){armed=0;orders=[];photos={};savePhotos();saveOrders();render();return}
+  if(n-armed<4000){armed=0;orders.forEach(o=>delete photos[String(o.id)]);orders=[];savePhotos();saveOrders();render();return}
   armed=n;$("clearAll").textContent="Bấm lần nữa để xóa hết";
-  setTimeout(()=>{$("clearAll").textContent="Xóa hết đơn hôm nay"},4000);
+  setTimeout(()=>{$("clearAll").textContent="Xóa hết đơn "+dayName()},4000);
 };
 
 const ICON={
@@ -697,6 +711,42 @@ function parseMoney(t){
 }
 let money=load("ship_money",{});
 if(money.day!==today())money={day:today(),cs:{},ce:{},debt:"",buy:"",wq:"",ws:""};
+/* Đưa ngày today() ra màn hình chính: cất ngày đang mở vào lịch sử, lấy đơn + bảng tiền của ngày này từ lịch sử ra
+   (xóa khỏi lịch sử để sửa/xóa đơn không bị bản cũ trong lịch sử ghi đè lại). */
+function loadDay(){
+  archiveOld();
+  const t=today(),hist=load("ship_hist",{}),h=hist[t],n0=orders.length;
+  orders=orders.filter(o=>o.day===t);let ch=orders.length!==n0;
+  const m0=load("ship_money",null);
+  money=(m0&&m0.day===t)?m0:null;
+  if(h){
+    const ids=new Set(orders.map(o=>o.id));
+    (h.orders||[]).forEach(o=>{if(!ids.has(o.id)){o.day=t;orders.push(o)}});
+    if(!money&&h.money){money=h.money;money.day=t;store("ship_money",money)}
+    delete hist[t];store("ship_hist",hist);ch=true;
+  }
+  if(!money)money={day:t,cs:{},ce:{},debt:"",buy:"",wq:"",ws:""};  /* chưa lưu: chỉ lưu khi nhập tiền */
+  if(ch)saveOrders();
+}
+loadDay();
+function openDay(D){
+  if(!D||D>=realToday())D=null;
+  if(D===WORKDAY)return;
+  WORKDAY=D;loadDay();editing.clear();$("paste").value="";closeIn();
+  ["histOv","monOv","sumOv","ov"].forEach(id=>$(id).classList.add("hidden"));
+  paintDay();setTab("n");window.scrollTo(0,0);
+  toast(D?"Đang nhập đơn cho "+dayName()+". Xong bấm “Về hôm nay”.":"✓ Đã về hôm nay.");
+}
+function paintDay(){
+  document.documentElement.classList.toggle("past",!!WORKDAY);
+  $("dayBar").classList.toggle("hidden",!WORKDAY);
+  if(WORKDAY)$("dayBarTxt").textContent="📅 Đang nhập/sửa đơn "+dayName();
+  $("clearAll").textContent="Xóa hết đơn "+dayName();
+  $("monTitle").textContent="Tiền được hưởng "+dayName();
+  $("sumTitle").textContent="Tổng kết "+dayName();
+  paintHdr();
+}
+$("dayBack").onclick=()=>openDay(null);
 const MF={debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs"};
 const DENOMS=[500,200,100,50,20,10,5];
 $("denBody").innerHTML=DENOMS.map(d=>'<tr><td>'+d+'k</td><td><input inputmode="numeric" data-den="cs:'+d+'" placeholder="0"></td><td><input inputmode="numeric" data-den="ce:'+d+'" placeholder="0"></td></tr>').join("");
@@ -744,8 +794,8 @@ $("btnMoney").onclick=()=>{
 $("monClose").onclick=()=>$("monOv").classList.add("hidden");
 $("monOv").addEventListener("click",e=>{if(e.target.id==="monOv")$("monOv").classList.add("hidden")});
 $("monCopy").onclick=async()=>{
-  const c=calcMoney(),d=new Date();
-  const t=["Tiền ngày "+d.getDate()+"/"+(d.getMonth()+1),
+  const c=calcMoney(),td=today();
+  const t=["Tiền ngày "+(+td.slice(8))+"/"+(+td.slice(5,7)),
     "Đầu ngày: "+mk(c.v.start)+" ("+DENOMS.filter(d=>+(money.cs||{})[d]).map(d=>d+"k×"+money.cs[d]).join(", ")+")",
     "Cuối ngày: "+mk(c.v.end)+" ("+DENOMS.filter(d=>+(money.ce||{})[d]).map(d=>d+"k×"+money.ce[d]).join(", ")+")",
     "Mua đồ: "+mk(c.v.buy),"Nợ: "+mk(c.v.debt),
@@ -936,9 +986,10 @@ function paintHist(){
         "<div>Tiền hàng "+mk(x.goods)+" · ship "+mk(x.ship)+(x.due.n?' · <span style="color:#b42318">chưa thu '+mk(x.due.v)+" ("+x.due.n+")</span>":"")+"</div>"+
         (st.c?"<div>Tiền mặt đầu "+mk(st.c.v.start)+" → cuối "+mk(st.c.v.end)+" · mua đồ "+mk(st.c.v.buy)+" · nợ "+mk(st.c.v.debt)+(st.c.v.wq||st.c.v.ws?" · rút "+mk(st.c.v.wq+st.c.v.ws):"")+"</div>":"")+
         all[d].orders.map(o=>"<div>"+(o.paid?"✓":'<span style="color:#b42318">✗</span>')+" "+esc(o.phone||"?")+" · "+mk(recvAmount(o))+" · "+(o.cash?"TM":o.msgSent?"SMS":"QR")+" · "+esc((noteText(o).split("\n").pop()||"").slice(0,30))+"</div>").join("")+
+        (d!==today()?'<button class="blue" data-open="'+d+'" style="margin-top:8px;width:100%">✎ Mở '+(d===realToday()?"hôm nay":"ngày này")+" để nhập/sửa đơn</button>":"")+
         "</div>";
     }
-    return '<div class="hday" data-day="'+d+'"><div class="t"><span>'+dd+(d===today()?" (hôm nay)":"")+"</span><span>"+mk(x.tot)+'</span></div><div class="d">'+x.cnt+" đơn · ship "+mk(x.ship)+(st.net!==null?" · hưởng "+mk(st.net):"")+(x.due.n?' · <span style="color:#b42318">chưa thu '+mk(x.due.v)+"</span>":"")+"</div>"+det+"</div>";
+    return '<div class="hday" data-day="'+d+'"><div class="t"><span>'+dd+(d===realToday()?" (hôm nay)":"")+(WORKDAY&&d===WORKDAY?" (đang mở)":"")+"</span><span>"+mk(x.tot)+'</span></div><div class="d">'+x.cnt+" đơn · ship "+mk(x.ship)+(st.net!==null?" · hưởng "+mk(st.net):"")+(x.due.n?' · <span style="color:#b42318">chưa thu '+mk(x.due.v)+"</span>":"")+"</div>"+det+"</div>";
   });
   const R=(a,b,c)=>"<tr"+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
   $("histBody").innerHTML=days.length?'<table class="sumt">'+
@@ -952,12 +1003,23 @@ function paintHist(){
   hTot=T;
 }
 let hTot=null;
-$("btnHist").onclick=()=>{archiveOld();hMonth=today().slice(0,7);hOpen=null;paintHist();$("histOv").classList.remove("hidden")};
+$("btnHist").onclick=()=>{
+  archiveOld();hMonth=today().slice(0,7);hOpen=null;paintHist();
+  const y=new Date();y.setDate(y.getDate()-1);
+  $("hDate").max=realToday();$("hDate").value=WORKDAY||(y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0"));
+  $("histOv").classList.remove("hidden");
+};
+$("hOpenDay").onclick=()=>{
+  const v=$("hDate").value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast("Chọn ngày cần nhập đơn.");return}
+  if(v>realToday()){toast("Không nhập đơn cho ngày chưa tới.");return}
+  openDay(v);
+};
 $("histClose").onclick=()=>$("histOv").classList.add("hidden");
 $("histOv").addEventListener("click",e=>{if(e.target.id==="histOv")$("histOv").classList.add("hidden")});
 $("hPrev").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m-2,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
 $("hNext").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
-$("histBody").addEventListener("click",e=>{const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
+$("histBody").addEventListener("click",e=>{const ob=e.target.closest&&e.target.closest("[data-open]");if(ob){openDay(ob.dataset.open);return}const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
 $("hCopy").onclick=async()=>{
   const T=hTot;if(!T)return;const [y,m]=hMonth.split("-");
   const t=["Tổng tháng "+(+m)+"/"+y,"Đơn đã thu: "+T.n,"QR: "+mk(T.qr),"SMS: "+mk(T.sms),"Tiền mặt: "+mk(T.tm),"Tổng đã thu: "+mk(T.tot),"Tiền hàng: "+mk(T.goods),"Tiền ship: "+mk(T.ship)].concat(T.netDays?["Được hưởng: "+mk(T.net)]:[]).concat(T.due?["Còn chưa thu: "+mk(T.due)]:[]).join("\n");
@@ -978,8 +1040,8 @@ function summary(list){
   return{g,due,ship,goods,tot,cnt};
 }
 function sumText(x){
-  const d=new Date(),L=(a,b)=>a+": "+b;
-  return ["Tổng kết ngày "+d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(),
+  const td=today(),L=(a,b)=>a+": "+b;
+  return ["Tổng kết ngày "+(+td.slice(8))+"/"+(+td.slice(5,7))+"/"+td.slice(0,4),
     L("QR ("+x.g.qr.n+" đơn)",mk(x.g.qr.v)),
     L("SMS ("+x.g.sms.n+" đơn)",mk(x.g.sms.v)),
     L("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v)),

@@ -37,6 +37,10 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   số dư TK QR = QR đã thu − rút QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS.
 - 📊 Tổng: QR/SMS/TM, tiền hàng, ship (+ ship chưa thu), chưa thu. 📅 Lịch sử: theo ngày, tổng tháng.
 - Sang ngày mới: đơn + bảng tiền ngày cũ cất vào `ship_hist` (không xóa). Ảnh chỉ giữ trong ngày.
+- Nhập/sửa đơn ngày đã qua: 📅 → chọn ngày → "Mở ngày" (hoặc nút trong ngày đang mở rộng). `WORKDAY` đè lên `today()`;
+  `loadDay()` cất ngày đang mở vào `ship_hist` rồi lấy ngày cần mở RA KHỎI `ship_hist` (để sửa/xóa không bị bản cũ đè).
+  Thanh vàng + header cam khi đang mở ngày cũ; "Về hôm nay" hoặc mở lại app là về hôm nay (`WORKDAY` không lưu;
+  `loadDay()` lúc khởi động lấy lại đơn hôm nay nếu đang nằm trong lịch sử). Không cho mở ngày tương lai.
 
 ## Lưu trữ
 - localStorage: `ship_orders`, `ship_hist`, `ship_money`, `ship_cfgQ`, `ship_cfgB`, `ship_catalog`, `ship_photos`, `ship_tab`,
