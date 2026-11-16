@@ -40,6 +40,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;
   số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS + cộng/trừ SMS.
   Ô cộng/trừ (`adjQ`, `adjS`) gõ được số âm ("-50k", "30k-10k", `parseSigned`), có nút ± đổi dấu vì bàn phím khó gõ "-".
+  Trong ô cộng/trừ dấu phẩy là CỘNG (người dùng yêu cầu): "165,645" = 165k + 645k, "-165,645" = trừ cả hai; "1,5tr" vẫn
+  là 1,5 triệu. Các ô tiền khác (`parseMoney`) vẫn coi "165,645" là 165.645đ.
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
 - 📊 Tổng: QR/SMS/TM, tiền hàng, ship (+ ship chưa thu), chưa thu. 📅 Lịch sử: theo ngày, tổng tháng.

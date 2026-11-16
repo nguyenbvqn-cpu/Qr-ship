@@ -252,14 +252,15 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <p class="muted" id="csHint" style="margin:4px 0 0"></p>
   <div class="mrow"><label>Tiền nợ</label><input id="mDebt" inputmode="text" placeholder="0"></div>
   <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300k+150k"></div>
-  <div class="mrow"><label>Cộng/trừ TK QR</label><button class="pm" data-pm="mAq">±</button><input id="mAq" inputmode="text" placeholder="vd -50k, 30k"></div>
-  <div class="mrow"><label>Cộng/trừ TK SMS</label><button class="pm" data-pm="mAs">±</button><input id="mAs" inputmode="text" placeholder="vd -50k, 30k"></div>
+  <div class="mrow"><label>Cộng/trừ TK QR</label><button class="pm" data-pm="mAq">±</button><input id="mAq" inputmode="text" placeholder="vd 165,645"></div>
+  <div class="mrow"><label>Cộng/trừ TK SMS</label><button class="pm" data-pm="mAs">±</button><input id="mAs" inputmode="text" placeholder="vd 165,645"></div>
   <button class="big" id="wdBtn" style="margin-top:10px">🏧 Rút tiền</button>
   <div id="wdBox" class="hidden">
     <div class="mrow"><label>Rút từ tài khoản QR</label><input id="mWq" inputmode="text" placeholder="0"></div>
     <div class="mrow"><label>Rút từ tài khoản SMS</label><input id="mWs" inputmode="text" placeholder="0"></div>
   </div>
-  <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000 hoặc cộng nhiều khoản: 300k+150k.</p>
+  <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000 hoặc cộng nhiều khoản: 300k+150k.
+    Ô cộng/trừ: dấu phẩy là cộng (165,645 = 165k + 645k), bấm ± để thành số âm.</p>
   <div id="monBody"></div>
   <button class="primary big" id="monCopy">Sao chép</button>
 </div></div>
@@ -782,10 +783,16 @@ function paintDay(){
 }
 $("dayBack").onclick=()=>openDay(null);
 const MF={debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs",adjQ:"mAq",adjS:"mAs"};
-const SIGNED={adjQ:1,adjS:1};  /* ô cộng/trừ: gõ được số âm, vd "-50k", "30k-10k" */
+const SIGNED={adjQ:1,adjS:1};
+/* ô cộng/trừ: gõ được số âm ("-50k", "30k-10k"); dấu phẩy là CỘNG: "165,645" = 165k + 645k,
+   "-165,645" = trừ cả hai. Riêng "1,5tr" vẫn là 1 triệu rưỡi. */
 function parseSigned(t){
-  const parts=String(t||"").replace(/[−–—]/g,"-").match(/[+\-]?[^+\-]+/g)||[];
-  return parts.reduce((s,p)=>{p=p.trim();const neg=p[0]==="-",v=parseMoney(p.replace(/^[+\-]\s*/,""));return s+(neg?-v:v)},0);
+  const parts=String(t||"").replace(/[−–—]/g,"-").replace(/(\d),(\d)\s*(tr)/gi,"$1.$2$3").match(/[+\-]?[^+\-]+/g)||[];
+  return parts.reduce((s,p)=>{
+    p=p.trim();const neg=p[0]==="-";
+    const v=p.replace(/^[+\-]\s*/,"").split(/[,;]/).reduce((a,q)=>a+parseMoney(q),0);
+    return s+(neg?-v:v);
+  },0);
 }
 const sgn=n=>(n<0?"−":"+")+mk(Math.abs(n));
 const DENOMS=[500,200,100,50,20,10,5];
