@@ -98,6 +98,8 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .mrow{display:flex;align-items:center;gap:8px;margin-top:8px}
 .mrow label{flex:1;margin:0;font-size:15px;color:inherit}
 .mrow input{flex:0 0 46%;text-align:right;font-size:17px;font-weight:600}
+.mrow .pm{flex:0 0 44px;padding:10px 0;font-size:19px;font-weight:700}
+.mrow .pm+input{flex-basis:38%}
 #histOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
 #histOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:92vh;overflow:auto}
 .hday{border-top:1px solid #e3e5e8;padding:8px 2px;cursor:pointer}
@@ -250,6 +252,8 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <p class="muted" id="csHint" style="margin:4px 0 0"></p>
   <div class="mrow"><label>Tiền nợ</label><input id="mDebt" inputmode="text" placeholder="0"></div>
   <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300k+150k"></div>
+  <div class="mrow"><label>Cộng/trừ TK QR</label><button class="pm" data-pm="mAq">±</button><input id="mAq" inputmode="text" placeholder="vd -50k, 30k"></div>
+  <div class="mrow"><label>Cộng/trừ TK SMS</label><button class="pm" data-pm="mAs">±</button><input id="mAs" inputmode="text" placeholder="vd -50k, 30k"></div>
   <button class="big" id="wdBtn" style="margin-top:10px">🏧 Rút tiền</button>
   <div id="wdBox" class="hidden">
     <div class="mrow"><label>Rút từ tài khoản QR</label><input id="mWq" inputmode="text" placeholder="0"></div>
@@ -777,7 +781,13 @@ function paintDay(){
   paintHdr();
 }
 $("dayBack").onclick=()=>openDay(null);
-const MF={debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs"};
+const MF={debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs",adjQ:"mAq",adjS:"mAs"};
+const SIGNED={adjQ:1,adjS:1};  /* ô cộng/trừ: gõ được số âm, vd "-50k", "30k-10k" */
+function parseSigned(t){
+  const parts=String(t||"").replace(/[−–—]/g,"-").match(/[+\-]?[^+\-]+/g)||[];
+  return parts.reduce((s,p)=>{p=p.trim();const neg=p[0]==="-",v=parseMoney(p.replace(/^[+\-]\s*/,""));return s+(neg?-v:v)},0);
+}
+const sgn=n=>(n<0?"−":"+")+mk(Math.abs(n));
 const DENOMS=[500,200,100,50,20,10,5];
 $("denBody").innerHTML=DENOMS.map(d=>'<tr><td>'+d+'k</td><td><input inputmode="numeric" data-den="cs:'+d+'" placeholder="0"></td><td><input inputmode="numeric" data-den="ce:'+d+'" placeholder="0"></td></tr>').join("");
 const denSum=o=>DENOMS.reduce((a,d)=>a+(parseInt((o||{})[d],10)||0)*d*1000,0);
@@ -805,11 +815,11 @@ function carryStart(){
 $("wdBtn").onclick=()=>$("wdBox").classList.toggle("hidden");
 function calcMoney(list,m){
   list=list||orders;m=m||money;
-  const x=summary(list),v={};Object.keys(MF).forEach(k=>v[k]=parseMoney(m[k]));
+  const x=summary(list),v={};Object.keys(MF).forEach(k=>v[k]=SIGNED[k]?parseSigned(m[k]):parseMoney(m[k]));
   v.start=denSum(m.cs);v.end=denSum(m.ce);
   const sw=list.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
   const diff=v.end-v.start;
-  const balQ=x.g.qr.v-v.wq,balS=x.g.sms.v+smsDue-v.ws;
+  const balQ=x.g.qr.v-v.wq+v.adjQ,balS=x.g.sms.v+smsDue-v.ws+v.adjS;
   const net=diff+v.buy-v.debt+balQ+balS;
   return{x,v,diff,net,smsDue,smsDueN:sw.length,balQ,balS};
 }
@@ -821,17 +831,23 @@ function paintMoney(){
     R("Tiền mặt (cuối − đầu)",sg(c.diff))+
     R("+ Tiền mua đồ",mk(c.v.buy))+
     R("− Tiền nợ",mk(c.v.debt))+
-    R("+ Số dư TK QR"+sub("thu "+mk(c.x.g.qr.v)+" ("+c.x.g.qr.n+" đơn)"+(c.v.wq?" − rút "+mk(c.v.wq):"")),sg(c.balQ))+
-    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+(c.smsDue?' <span style="color:#b42318;font-weight:600">+ chưa ck '+mk(c.smsDue)+"</span>":"")+(c.v.ws?" − rút "+mk(c.v.ws):"")),sg(c.balS))+
+    R("+ Số dư TK QR"+sub("thu "+mk(c.x.g.qr.v)+" ("+c.x.g.qr.n+" đơn)"+(c.v.wq?" − rút "+mk(c.v.wq):"")+(c.v.adjQ?" "+sgn(c.v.adjQ)+" (cộng/trừ)":"")),sg(c.balQ))+
+    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+(c.smsDue?' <span style="color:#b42318;font-weight:600">+ chưa ck '+mk(c.smsDue)+"</span>":"")+(c.v.ws?" − rút "+mk(c.v.ws):"")+(c.v.adjS?" "+sgn(c.v.adjS)+" (cộng/trừ)":"")),sg(c.balS))+
     R("Được hưởng",sg(c.net),"big")+"</table>"+
     "";
 }
 Object.keys(MF).forEach(k=>{
   $(MF[k]).addEventListener("input",e=>{money[k]=e.target.value;store("ship_money",money);paintMoney()});
 });
+/* nút ± đổi dấu ô cộng/trừ (bàn phím điện thoại khó gõ dấu trừ) */
+document.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{
+  const el=$(b.dataset.pm),k=Object.keys(MF).find(x=>MF[x]===b.dataset.pm),t=el.value.trim();
+  el.value=t.startsWith("-")||t.startsWith("−")?t.slice(1).trim():"-"+t.replace(/^\+\s*/,"");
+  money[k]=el.value;store("ship_money",money);paintMoney();
+});
 $("btnMoney").onclick=()=>{
   archiveOld();
-  if(money.day!==today())money={day:today(),cs:{},ce:{},debt:"",buy:"",wq:"",ws:""};
+  if(money.day!==today())money={day:today(),cs:{},ce:{},debt:"",buy:"",wq:"",ws:"",adjQ:"",adjS:""};
   carryStart();
   $("csHint").textContent=money.csFrom?"Đầu ngày tự lấy từ cuối ngày "+(+money.csFrom.slice(8))+"/"+(+money.csFrom.slice(5,7))+". Đếm lại thấy khác thì sửa trực tiếp.":"";
   Object.keys(MF).forEach(k=>$(MF[k]).value=money[k]||"");
@@ -847,8 +863,8 @@ $("monCopy").onclick=async()=>{
     "Đầu ngày: "+mk(c.v.start)+" ("+DENOMS.filter(d=>+(money.cs||{})[d]).map(d=>d+"k×"+money.cs[d]).join(", ")+")",
     "Cuối ngày: "+mk(c.v.end)+" ("+DENOMS.filter(d=>+(money.ce||{})[d]).map(d=>d+"k×"+money.ce[d]).join(", ")+")",
     "Mua đồ: "+mk(c.v.buy),"Nợ: "+mk(c.v.debt),
-    "Số dư TK QR: "+mk(c.balQ)+" (thu "+mk(c.x.g.qr.v)+" − rút "+mk(c.v.wq)+")",
-    "Số dư TK SMS: "+mk(c.balS)+" (đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+" − rút "+mk(c.v.ws)+")",
+    "Số dư TK QR: "+mk(c.balQ)+" (thu "+mk(c.x.g.qr.v)+" − rút "+mk(c.v.wq)+(c.v.adjQ?" "+sgn(c.v.adjQ)+" cộng/trừ":"")+")",
+    "Số dư TK SMS: "+mk(c.balS)+" (đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+" − rút "+mk(c.v.ws)+(c.v.adjS?" "+sgn(c.v.adjS)+" cộng/trừ":"")+")",
 
     "ĐƯỢC HƯỞNG: "+mk(c.net)].join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}

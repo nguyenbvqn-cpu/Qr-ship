@@ -38,7 +38,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - Tab SMS: dán biến động số dư → khớp theo SĐT hoặc tên người chuyển (chữ IN HOA), rồi theo số tiền; trùng số tiền thì cho chọn.
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;
-  số dư TK QR = QR đã thu − rút QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS.
+  số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS + cộng/trừ SMS.
+  Ô cộng/trừ (`adjQ`, `adjS`) gõ được số âm ("-50k", "30k-10k", `parseSigned`), có nút ± đổi dấu vì bàn phím khó gõ "-".
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
 - 📊 Tổng: QR/SMS/TM, tiền hàng, ship (+ ship chưa thu), chưa thu. 📅 Lịch sử: theo ngày, tổng tháng.
