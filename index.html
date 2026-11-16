@@ -467,7 +467,7 @@ const bankOpts=BANKS.map((b,i)=>`<option value="${i}">${b[0]}</option>`).join(""
 $("bankQ").innerHTML=bankOpts;$("bank").innerHTML=bankOpts;
 $("bankQ").value=cfgQ.bankIdx;$("accQ").value=cfgQ.account||"";
 $("bank").value=cfgB.bankIdx;$("acc").value=cfgB.account||"";$("holder").value=cfgB.holder||"";
-$("btnCfg").onclick=()=>$("cfg").classList.toggle("hidden");
+$("btnCfg").onclick=()=>{cfgAutoOpen=false;$("cfg").classList.toggle("hidden")};
 $("saveCfg").onclick=()=>{
   cfgQ={bankIdx:parseInt($("bankQ").value,10),account:$("accQ").value.replace(/\D/g,"")};
   cfgB={bankIdx:parseInt($("bank").value,10),account:$("acc").value.replace(/\D/g,""),holder:$("holder").value.trim()};
@@ -476,7 +476,14 @@ $("saveCfg").onclick=()=>{
 };
 {let cat=load("ship_catalog",CATALOG_DEFAULT);if(/^bé, nhỏ = 50k/.test(cat)){cat=cat.replace(/^bé, nhỏ = 50k/,"bé, nhỏ = 55k");store("ship_catalog",cat)}setCatalog(cat);$("catalog").value=cat;}
 paintHdr();
-if(!cfgQ.account)$("cfg").classList.remove("hidden");
+/* Chưa có tài khoản QR thì mở ⚙ để nhập — nhưng chỉ sau lần đồng bộ đầu (máy mới đăng nhập sẽ nhận tài khoản
+   từ Supabase, không cần mở ⚙). Tự mở 1 lần; nếu đồng bộ mang tài khoản về thì tự đóng lại. */
+let cfgAutoDone=false,cfgAutoOpen=false;
+function cfgIfEmpty(){
+  if(cfgQ.account||cfgAutoDone||document.documentElement.classList.contains("locked"))return;
+  cfgAutoDone=true;
+  if($("cfg").classList.contains("hidden")){$("cfg").classList.remove("hidden");cfgAutoOpen=true}
+}
 
 /* thêm đơn */
 const TABNAME={n:"Mới",q:"QR",m:"SMS",t:"TM"};
@@ -847,6 +854,7 @@ function applyRemote(k,v){
       if(v.cfgB){cfgB=v.cfgB;store("ship_cfgB",cfgB)}
       if(v.catalog){store("ship_catalog",v.catalog);setCatalog(v.catalog);$("catalog").value=v.catalog}
       $("bankQ").value=cfgQ.bankIdx;$("accQ").value=cfgQ.account||"";$("bank").value=cfgB.bankIdx;$("acc").value=cfgB.account||"";$("holder").value=cfgB.holder||"";
+      if(cfgAutoOpen&&cfgQ.account){$("cfg").classList.add("hidden");cfgAutoOpen=false}
     }else{
       const D=k.slice(4),os=(v&&v.orders)||[];
       if(D===today()){
@@ -872,8 +880,8 @@ async function sbInit(){
     const r=await sb.auth.getSession();if(r.error)syncErr=r.error.message;
     sbUser=r.data&&r.data.session?r.data.session.user:null;
     sb.auth.onAuthStateChange((ev,ss)=>{sbUser=ss?ss.user:null;paintSb()});
-    sbBooting=false;paintSb();if(sbUser)syncNow();return true;
-  }catch(e){sbBooting=false;syncErr=e.message;paintSb();return false}
+    sbBooting=false;paintSb();if(sbUser)syncNow();else cfgIfEmpty();return true;
+  }catch(e){sbBooting=false;syncErr=e.message;paintSb();cfgIfEmpty();return false}
 }
 async function syncNow(){
   if(!sb||!sbUser||syncing)return;
@@ -897,7 +905,7 @@ async function syncNow(){
     lastSync=Date.now();syncErr="";
     if(pull.length){paintHdr();render()}
   }catch(e){syncErr=(e&&e.message)||"lỗi";}
-  finally{syncing=false;paintHdr();paintSb()}
+  finally{syncing=false;paintHdr();paintSb();cfgIfEmpty()}
 }
 function paintSb(){
   $("sbOut").classList.toggle("hidden",!!sbUser);$("sbIn").classList.toggle("hidden",!sbUser);
