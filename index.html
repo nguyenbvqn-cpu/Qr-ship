@@ -105,6 +105,9 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .hday .d{font-size:13px;color:#6b7280}
 .hdet{font-size:13px;margin-top:6px}
 .hdet div{padding:2px 0}
+/* thanh tiêu đề bảng (có nút ✕) luôn nằm trên cùng khi cuộn */
+.sheet .shd{position:sticky;top:-14px;z-index:3;background:#fff;margin:-14px -14px 4px;padding:10px 14px;border-bottom:1px solid #e3e5e8;border-radius:16px 16px 0 0}
+.sheet .shd button{min-height:44px;min-width:48px;font-size:18px}
 .seg{display:flex;gap:6px;margin:10px 0 2px}
 .seg button{flex:1;padding:10px 4px;font-weight:600;font-size:15px}
 .seg button.on{background:#0b7a43;color:#fff}
@@ -238,7 +241,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <button class="big" id="dupCancel">Hủy</button>
 </div></div>
 <div id="monOv" class="hidden"><div class="sheet">
-  <div class="row" style="align-items:center"><b style="font-size:18px" id="monTitle">Tiền được hưởng hôm nay</b><button id="monClose" style="flex:0 0 auto">✕</button></div>
+  <div class="row shd" style="align-items:center"><b style="font-size:18px" id="monTitle">Tiền được hưởng hôm nay</b><button id="monClose" style="flex:0 0 auto">✕</button></div>
   <table class="den">
     <thead><tr><th>Mệnh giá</th><th>Đầu ngày<br><small>số tờ</small></th><th>Cuối ngày<br><small>số tờ</small></th></tr></thead>
     <tbody id="denBody"></tbody>
@@ -257,7 +260,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <button class="primary big" id="monCopy">Sao chép</button>
 </div></div>
 <div id="histOv" class="hidden"><div class="sheet">
-  <div class="row" style="align-items:center"><button id="hPrev" style="flex:0 0 48px">‹</button><b id="hTitle" style="text-align:center;font-size:17px"></b><button id="hNext" style="flex:0 0 48px">›</button><button id="histClose" style="flex:0 0 48px">✕</button></div>
+  <div class="row shd" style="align-items:center"><button id="hPrev" style="flex:0 0 48px">‹</button><b id="hTitle" style="text-align:center;font-size:17px"></b><button id="hNext" style="flex:0 0 48px">›</button><button id="histClose" style="flex:0 0 48px">✕</button></div>
   <div class="seg"><button id="hvAll" class="on">📅 Theo ngày</button><button id="hvShip">🚚 Tiền ship</button></div>
   <div id="histBody"></div>
   <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e3e5e8">
@@ -267,7 +270,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <button class="primary big" id="hCopy">Sao chép tổng tháng</button>
 </div></div>
 <div id="sumOv" class="hidden"><div class="sheet">
-  <div class="row" style="align-items:center"><b style="font-size:18px" id="sumTitle">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
+  <div class="row shd" style="align-items:center"><b style="font-size:18px" id="sumTitle">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
   <div id="sumBody"></div>
   <button class="big" id="sumShip">🚚 Tiền ship các ngày</button>
   <div class="row"><button class="primary big" id="sumCopy">Sao chép bảng tổng</button></div>
