@@ -229,6 +229,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
     <tbody id="denBody"></tbody>
     <tfoot><tr><td>Tổng</td><td id="denS">0</td><td id="denE">0</td></tr></tfoot>
   </table>
+  <p class="muted" id="csHint" style="margin:4px 0 0"></p>
   <div class="mrow"><label>Tiền nợ</label><input id="mDebt" inputmode="text" placeholder="0"></div>
   <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300k+150k"></div>
   <button class="big" id="wdBtn" style="margin-top:10px">🏧 Rút tiền</button>
@@ -761,8 +762,24 @@ const denSum=o=>DENOMS.reduce((a,d)=>a+(parseInt((o||{})[d],10)||0)*d*1000,0);
 $("denBody").addEventListener("input",e=>{
   const k=e.target.dataset.den;if(!k)return;const [side,d]=k.split(":");
   money[side]=money[side]||{};money[side][d]=e.target.value.replace(/\D/g,"");
+  if(side==="cs"){money.csManual=true;delete money.csFrom}  /* tự sửa đầu ngày: thôi lấy tự động */
   store("ship_money",money);paintMoney();
 });
+/* Đầu ngày = số tờ cuối ngày của ngày gần nhất trước đó có đếm cuối ngày. Không cần "chốt số":
+   còn tự lấy (cập nhật theo nếu sửa cuối ngày hôm trước) cho tới khi người dùng tự sửa cột đầu ngày.
+   Bảng đã nhập tay từ trước (có số, không có csFrom) thì giữ nguyên. */
+function prevEnd(t){
+  const hist=load("ship_hist",{});
+  const ds=Object.keys(hist).filter(d=>d<t&&hist[d].money&&denSum(hist[d].money.ce)>0).sort();
+  const d=ds.pop();return d?{day:d,ce:hist[d].money.ce}:null;
+}
+function carryStart(){
+  const empty=!DENOMS.some(d=>+((money.cs||{})[d]));
+  if(money.csManual||!(empty||money.csFrom))return;
+  const p=prevEnd(money.day||today());if(!p)return;
+  const cs={};DENOMS.forEach(d=>{if(+p.ce[d])cs[d]=String(p.ce[d]).replace(/\D/g,"")});
+  if(JSON.stringify(cs)!==JSON.stringify(money.cs||{})||money.csFrom!==p.day){money.cs=cs;money.csFrom=p.day;store("ship_money",money)}
+}
 $("wdBtn").onclick=()=>$("wdBox").classList.toggle("hidden");
 function calcMoney(list,m){
   list=list||orders;m=m||money;
@@ -793,6 +810,8 @@ Object.keys(MF).forEach(k=>{
 $("btnMoney").onclick=()=>{
   archiveOld();
   if(money.day!==today())money={day:today(),cs:{},ce:{},debt:"",buy:"",wq:"",ws:""};
+  carryStart();
+  $("csHint").textContent=money.csFrom?"Đầu ngày tự lấy từ cuối ngày "+(+money.csFrom.slice(8))+"/"+(+money.csFrom.slice(5,7))+". Đếm lại thấy khác thì sửa trực tiếp.":"";
   Object.keys(MF).forEach(k=>$(MF[k]).value=money[k]||"");
   document.querySelectorAll("[data-den]").forEach(el=>{const [side,d]=el.dataset.den.split(":");el.value=((money[side]||{})[d])||""});
   $("wdBox").classList.toggle("hidden",!(money.wq||money.ws));
