@@ -34,7 +34,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ.
 - Tin nhắn STK (tài khoản thứ 2) dạng: `95k / STK / Ngân hàng / Tên / Noi dung : SĐT`, không cộng 1đ.
 - Tab dưới đáy: Mới / QR / SMS (đã ck/tổng) / TM (tiền mặt). Đơn chưa thu lên đầu; tab SMS: nhắn sau lên trên (cả chưa ck lẫn đã ck,
-  theo `msgAt`), không có nút ▲▼.
+  theo `msgAt`), không có nút ▲▼. Nút "Nhắn lại" ở tab SMS chỉ nhắn "Alo" (`REMIND`, người dùng yêu cầu), không gửi
+  lại STK, không cần tài khoản ở ⚙ và không đổi `msgAt` (đơn không nhảy chỗ).
 - Tab SMS: dán biến động số dư → khớp theo SĐT hoặc tên người chuyển (chữ IN HOA), rồi theo số tiền; trùng số tiền thì cho chọn.
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;

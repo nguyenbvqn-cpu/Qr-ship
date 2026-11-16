@@ -611,7 +611,7 @@ function render(){
   $("list").innerHTML=tabSummary(items)+items.map(([o,i],k)=>{
     const st=stageOf(o),open=editing.has(o.id)||!o.phone;
     const B=(a,t,c)=>'<button'+(c?' class="'+c+'"':"")+' data-a="'+a+'">'+t+"</button>";
-    const S=(t,a,c)=>'<a class="btn '+(c||"blue")+'" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o)):"#")+'">'+t+"</a>";
+    const S=(t,a,c)=>'<a class="btn '+(c||"blue")+'" data-a="'+a+'" href="'+(o.phone?esc(smsHref(o,a==="resend"?REMIND:"")):"#")+'">'+t+"</a>";
     const more=B("more",open?"✕":"⋯","more");
     let main,sec="";
     const trio=B("show",ICON.qr,"ic primary")+S(ICON.sms,"msg","blue ic")+B("cash",ICON.cash,"ic tm");
@@ -667,10 +667,12 @@ $("list").addEventListener("click",e=>{
   else if(a==="photo"){camTarget=o.id;$("cam").value="";$("cam").click()}
   else if(a==="msg"||a==="resend"){
     if(!o.phone){e.preventDefault();toast("Đơn chưa có SĐT khách, hãy nhập SĐT trước.");return}
-    if(!cfgB.account){e.preventDefault();openCfg();toast("Hãy nhập tài khoản gửi cho khách trước.");return}
-    o.msgSent=true;o.qrShown=false;o.msgAt=Date.now();saveOrders();
-    lastMsg=buildMsg(o,bankB());lastPhone=o.phone;
-    const el=e.target.closest("a");if(el&&el.setAttribute)el.setAttribute("href",smsHref(o));
+    const re=a==="resend";
+    if(!re&&!cfgB.account){e.preventDefault();openCfg();toast("Hãy nhập tài khoản gửi cho khách trước.");return}
+    /* nhắn nhắc "Alo" không đổi giờ nhắn STK (msgAt) nên đơn không nhảy chỗ trong tab SMS */
+    if(!re){o.msgSent=true;o.qrShown=false;o.msgAt=Date.now();saveOrders()}
+    lastMsg=re?REMIND:buildMsg(o,bankB());lastPhone=o.phone;
+    const el=e.target.closest("a");if(el&&el.setAttribute)el.setAttribute("href",smsHref(o,re?REMIND:""));
     toast("",true);doCopy();
     setTimeout(render,400);
   }
@@ -1222,9 +1224,10 @@ $("phDel").onclick=()=>{
 
 /* nhắn STK: bấm là mở app tin nhắn với sẵn SĐT + nội dung */
 let lastMsg="",lastPhone="",toastTimer=0;
-function smsHref(o){
+const REMIND="Alo";  /* nút "Nhắn lại" ở tab SMS chỉ nhắn nhắc khách, không gửi lại STK */
+function smsHref(o,body){
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
-  return "sms:"+o.phone+(ios?"&":"?")+"body="+encodeURIComponent(buildMsg(o,bankB()));
+  return "sms:"+o.phone+(ios?"&":"?")+"body="+encodeURIComponent(body||buildMsg(o,bankB()));
 }
 function toast(txt,withCopy){
   $("toastTxt").textContent=txt;
