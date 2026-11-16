@@ -113,9 +113,25 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .sumt tr.big td{font-size:18px;color:#0b7a43;border-bottom:0}
 #toast{position:fixed;left:8px;right:8px;top:8px;z-index:30;background:#16181d;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;white-space:pre-wrap;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #toast button,#toast a.btn{padding:8px 10px;font-size:14px}
+#lock{display:none}
+html.locked body{overflow:hidden}
+html.locked #lock{position:fixed;inset:0;z-index:60;background:#0b7a43;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+#lock h2{margin:0;font-size:28px}
+#lock p{margin:0;color:#d6f0e0;font-size:15px;max-width:320px}
+#lock button{width:100%;max-width:320px;padding:15px;font-size:17px;background:#fff;color:#0b7a43;font-weight:700;margin-top:10px}
+#lock .err{color:#ffd9d9}
 </style>
+<script>
+/* Khóa app: máy chưa đăng nhập Google thì che toàn bộ app. Chạy trước khi vẽ trang để không lộ giao diện.
+   URL + publishable key của Supabase là loại được phép công khai; dữ liệu vẫn chỉ đọc được khi đăng nhập (RLS). */
+var SB_URL="https://tkjfswyytbvitvlehnxp.supabase.co",SB_KEY="sb_publishable_d3naIpC0fuSVsJCKJlH1xQ_Kp_dHd8e";
+var SB_TOKEN="sb-"+SB_URL.split("//")[1].split(".")[0]+"-auth-token";
+function hasToken(){try{return !!localStorage.getItem(SB_TOKEN)}catch(e){return false}}
+if(!hasToken())document.documentElement.classList.add("locked");
+</script>
 </head>
 <body>
+<div id="lock"><h2>QR ship</h2><p id="lockMsg">Đăng nhập Google để dùng app.</p><button id="lockBtn">Đăng nhập bằng Google</button><p class="err" id="lockErr"></p></div>
 <header>
   <div style="min-width:0"><h1>QR ship</h1><small id="hdrSub"></small></div>
   <div class="hb"><button id="btnMoney">💰 Tiền</button><button id="btnSum">📊 Tổng</button><button id="btnHist" aria-label="Lịch sử">📅</button><button id="btnCfg" aria-label="Cài đặt">⚙</button></div>
@@ -142,9 +158,7 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
     <button class="primary big" id="saveCfg">Lưu</button>
     <b style="display:block;margin-top:16px">Đồng bộ online (Supabase)</b>
     <div id="sbOut">
-      <label>Project URL</label><input id="sbUrl" autocomplete="off" placeholder="https://xxxx.supabase.co">
-      <label>Publishable key (anon)</label><input id="sbKey" autocomplete="off" placeholder="sb_publishable_...">
-      <button class="primary big" id="sbLogin" style="margin-top:8px">Đăng nhập bằng Google</button>
+      <button class="primary big" id="sbLogin">Đăng nhập bằng Google</button>
     </div>
     <div id="sbIn" class="hidden">
       <p id="sbWho" style="margin:6px 0"></p>
@@ -745,7 +759,7 @@ $("monCopy").onclick=async()=>{
 /* ===== đồng bộ Supabase =====
    Mỗi người dùng có các dòng trong bảng ship_kv: "cfg" (tài khoản, bảng giá) và "day:YYYY-MM-DD" (đơn + bảng tiền ngày đó).
    m = thời điểm sửa (ms); bên nào mới hơn thì thắng. */
-let sbCfg=load("ship_sb",{url:"",key:""}),sb=null,sbUser=null,mtime=load("ship_mtime",{}),applying=false,syncTimer=0,lastSync=0,syncErr="",syncing=false;
+let sbCfg={url:SB_URL,key:SB_KEY},sbBooting=true,sb=null,sbUser=null,mtime=load("ship_mtime",{}),applying=false,syncTimer=0,lastSync=0,syncErr="",syncing=false;
 const CFG_KEYS=["ship_cfgQ","ship_cfgB","ship_catalog"];
 function markDirty(k){mtime[k]=Date.now();try{localStorage.setItem("ship_mtime",JSON.stringify(mtime))}catch(e){}if(sbUser){clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1500)}}
 var SYNC_READY=false;
@@ -808,8 +822,8 @@ async function sbInit(){
     const r=await sb.auth.getSession();if(r.error)syncErr=r.error.message;
     sbUser=r.data&&r.data.session?r.data.session.user:null;
     sb.auth.onAuthStateChange((ev,ss)=>{sbUser=ss?ss.user:null;paintSb()});
-    paintSb();if(sbUser)syncNow();return true;
-  }catch(e){syncErr=e.message;paintSb();return false}
+    sbBooting=false;paintSb();if(sbUser)syncNow();return true;
+  }catch(e){sbBooting=false;syncErr=e.message;paintSb();return false}
 }
 async function syncNow(){
   if(!sb||!sbUser||syncing)return;
@@ -836,25 +850,38 @@ async function syncNow(){
   finally{syncing=false;paintHdr();paintSb()}
 }
 function paintSb(){
-  $("sbUrl").value=sbCfg.url||"";$("sbKey").value=sbCfg.key||"";
   $("sbOut").classList.toggle("hidden",!!sbUser);$("sbIn").classList.toggle("hidden",!sbUser);
   if(sbUser)$("sbWho").textContent="Đã đăng nhập: "+sbUser.email;
   $("sbMsg").textContent=syncErr?"⚠ "+syncErr:(sbUser&&lastSync?"Đã đồng bộ lúc "+new Date(lastSync).toLocaleTimeString("vi-VN"):"");
-  paintHdr();
+  paintLock();paintHdr();
+}
+/* Khóa khi không có phiên đăng nhập nào trong máy. Mất mạng mà máy vẫn còn phiên đã lưu thì vẫn mở được app. */
+function paintLock(){
+  const locked=!sbUser&&!hasToken();
+  document.documentElement.classList.toggle("locked",locked);
+  if(!locked)return;
+  const back=sbBooting&&/access_token=/.test(location.hash);
+  $("lockMsg").textContent=back?"Đang đăng nhập…":"Đăng nhập Google để dùng app.";
+  $("lockBtn").classList.toggle("hidden",back);
+  $("lockErr").textContent=syncErr?"⚠ "+syncErr:"";
 }
 /* Đăng nhập Google: chuyển sang trang Google, xong quay về đúng trang này; supabase-js tự đọc phiên từ địa chỉ trả về. */
 async function sbAuth(){
-  const url=$("sbUrl").value.trim().replace(/\/+$/,""),key=$("sbKey").value.trim();
-  if(!url||!key){$("sbMsg").textContent="Nhập Project URL và anon key trước.";return}
-  if(!sb||url!==sbCfg.url||key!==sbCfg.key){sbCfg={url,key};store("ship_sb",sbCfg);sb=null;syncErr="";if(!(await sbInit()))return}
+  syncErr="";paintSb();
+  if(!sb&&!(await sbInit()))return;
   if(sbUser){paintSb();syncNow();return}
-  $("sbMsg").textContent="Đang mở Google…";
+  $("sbMsg").textContent=$("lockMsg").textContent="Đang mở Google…";
   const r=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:"select_account"}}});
-  if(r.error)$("sbMsg").textContent="⚠ "+r.error.message;
+  if(r.error){syncErr=r.error.message;paintSb()}
 }
+$("lockBtn").onclick=()=>sbAuth();
 $("sbLogin").onclick=()=>sbAuth();
 $("sbNow").onclick=()=>syncNow();
-$("sbLogout").onclick=async()=>{if(sb)await sb.auth.signOut();sbUser=null;paintSb()};
+$("sbLogout").onclick=async()=>{
+  try{if(sb)await sb.auth.signOut({scope:"local"})}catch(e){}
+  try{localStorage.removeItem(SB_TOKEN)}catch(e){}  /* mất mạng thì signOut không xóa phiên: xóa tay để khóa lại */
+  sbUser=null;lastSync=0;syncErr="";paintSb();
+};
 /* quay lại app (vd. sau khi đăng nhập Google ở tab khác): đọc lại phiên đã lưu */
 async function sbRecheck(){
   if(!sb||sbUser)return;

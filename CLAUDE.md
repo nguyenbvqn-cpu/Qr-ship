@@ -8,7 +8,12 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - GitHub Pages từ nhánh `main`, thư mục gốc: https://nguyenbvqn-cpu.github.io/Qr-ship/
 - Push lên `main` là web tự cập nhật sau 1–2 phút. Khi đổi cách cache, tăng `const V` trong `sw.js`.
 - `sw.js`: trang chính lấy mạng trước (network-first), thư viện CDN (qrcode-generator, supabase-js) cache-first.
-- Repo public: KHÔNG để số tài khoản, khóa, dữ liệu khách trong mã. Tài khoản nhập trong app (⚙), lưu localStorage.
+- Repo public: KHÔNG để số tài khoản, khóa bí mật, dữ liệu khách trong mã. Tài khoản nhập trong app (⚙), lưu localStorage.
+  Ngoại lệ đã thống nhất: Supabase URL + publishable key (`SB_URL`, `SB_KEY` ở `<script>` đầu trang) — loại công khai được,
+  dữ liệu khóa bằng RLS. Tuyệt đối không đưa `sb_secret_…` hay Google Client Secret vào mã.
+- App bị khóa: máy chưa có phiên đăng nhập Google (`localStorage` khóa `sb-<ref>-auth-token`) thì `html.locked` che toàn
+  bộ app bằng `#lock`. Script ở `<head>` đặt class trước khi vẽ trang; `paintLock()` cập nhật theo `sbUser`/phiên đã lưu.
+  Mất mạng mà còn phiên đã lưu thì vẫn mở app. Đây chỉ là khóa giao diện; bảo vệ dữ liệu thật là RLS + chỉ 1 tài khoản.
 
 ## Cấu trúc JS trong index.html
 - Khối `/*CORE*/ … /*ENDCORE*/`: hàm thuần, test được bằng Node: `buildVietQR` (EMVCo + CRC16), `parseOrder`
@@ -46,8 +51,9 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   Trạng thái (15/11/2026): đã tạo project Supabase `qr-ship`, đã chạy `supabase.sql`, Site URL = trang GitHub Pages,
   Redirect URLs có `https://nguyenbvqn-cpu.github.io/Qr-ship/**`. Google provider cần OAuth client của Google Cloud
   (redirect URI `https://<project>.supabase.co/auth/v1/callback`); để consent screen ở chế độ Testing với email chủ app
-  là test user để chỉ người đó đăng nhập được. App dùng publishable key (`sb_publishable_…`).
-  URL + key nhập trong app, không ghi vào repo.
+  là test user để chỉ người đó đăng nhập được. Google Cloud project `qr-ship` đã tạo, Google provider đã bật.
+  Supabase đã tắt "Allow new users to sign up" (16/11/2026) sau khi chủ app có tài khoản Google: không ai tạo thêm
+  tài khoản được. Muốn thêm máy/người khác dùng chung thì phải bật lại tạm thời.
 
 ## Cách kiểm tra
 - Không có test tự động. Cách đã dùng: tách khối CORE chạy bằng Node để thử `parseOrder`/`matchBank`/`buildVietQR`
