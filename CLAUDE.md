@@ -30,7 +30,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
     bé/nhỏ 55k · sốt me/me 55k · rút xương/trộn 65k · ớt xanh/cay 75k · lắc/cóc 55k · mắm 55k · to 100k · luộc/thảo quả 100k.
 - QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ.
 - Tin nhắn STK (tài khoản thứ 2) dạng: `95k / STK / Ngân hàng / Tên / Noi dung : SĐT`, không cộng 1đ.
-- Tab dưới đáy: Mới / QR / SMS (đã ck/tổng) / TM (tiền mặt). Đơn chưa thu lên đầu; SMS chưa ck: nhắn sau lên trên.
+- Tab dưới đáy: Mới / QR / SMS (đã ck/tổng) / TM (tiền mặt). Đơn chưa thu lên đầu; tab SMS: nhắn sau lên trên (cả chưa ck lẫn đã ck,
+  theo `msgAt`), không có nút ▲▼.
 - Tab SMS: dán biến động số dư → khớp theo SĐT hoặc tên người chuyển (chữ IN HOA), rồi theo số tiền; trùng số tiền thì cho chọn.
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;

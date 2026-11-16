@@ -610,7 +610,7 @@ function render(){
       <div class="line">
         <div class="stepper sm"><button data-a="shipdn">−</button><b>ship ${fmtK(o.ship||0)}</b><button data-a="shipup">+</button></div>
         <span class="muted">hàng ${fmtK(o.goods||0)}</span>
-        <span class="arws"><button class="arw" data-a="up"${(tab==="m"&&!o.paid)||k===0||!!items[k-1][0].paid!==!!o.paid?" disabled":""}>▲</button><button class="arw" data-a="down"${(tab==="m"&&!o.paid)||k===items.length-1||!!items[k+1][0].paid!==!!o.paid?" disabled":""}>▼</button></span>
+        ${tab==="m"?"":`<span class="arws"><button class="arw" data-a="up"${k===0||!!items[k-1][0].paid!==!!o.paid?" disabled":""}>▲</button><button class="arw" data-a="down"${k===items.length-1||!!items[k+1][0].paid!==!!o.paid?" disabled":""}>▼</button></span>`}
       </div>
       ${thumbs}
       <div class="acts">${main}</div>
@@ -1184,9 +1184,10 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()})
 /* đơn chưa thu lên đầu, đã thu xuống dưới (giữ thứ tự trong từng nhóm) */
 function tabIdx(){
   const idx=[];orders.forEach((o,k)=>{if(inTab(o))idx.push(k)});
-  const un=idx.filter(k=>!orders[k].paid);
-  if(tab==="m")un.sort((a,b)=>(orders[b].msgAt||0)-(orders[a].msgAt||0));
-  return un.concat(idx.filter(k=>orders[k].paid));
+  const un=idx.filter(k=>!orders[k].paid),pd=idx.filter(k=>orders[k].paid);
+  /* tab SMS: đơn nhắn sau lên trên (cả chưa ck lẫn đã ck); chưa ck vẫn đứng trên đã ck */
+  if(tab==="m"){const late=(a,b)=>((orders[b].msgAt||0)-(orders[a].msgAt||0))||(b-a);un.sort(late);pd.sort(late)}
+  return un.concat(pd);
 }
 function moveOrder(i,dir){
   const idx=tabIdx();
