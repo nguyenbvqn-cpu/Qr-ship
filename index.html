@@ -105,6 +105,21 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .hday .d{font-size:13px;color:#6b7280}
 .hdet{font-size:13px;margin-top:6px}
 .hdet div{padding:2px 0}
+.seg{display:flex;gap:6px;margin:10px 0 2px}
+.seg button{flex:1;padding:10px 4px;font-weight:600;font-size:15px}
+.seg button.on{background:#0b7a43;color:#fff}
+.shipt{width:100%;border-collapse:collapse;font-size:15px}
+.shipt th{font-size:12px;color:#6b7280;font-weight:600;text-align:right;padding:6px 4px}
+.shipt th:first-child{text-align:left}
+.shipt td{padding:11px 4px;border-top:1px solid #e3e5e8;text-align:right;font-weight:700;vertical-align:top}
+.shipt td:first-child{text-align:left}
+.shipt tr[data-day]{cursor:pointer}
+.shipt tr.on td{background:#eef7f1}
+.shipt td.det{text-align:left;font-weight:400;font-size:14px;background:#f7f8fa;border-top:0;padding:8px 10px}
+.shipt .dueS{font-size:12px;color:#b42318;font-weight:600}
+.sl{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed #d5d8de}
+.sl small{color:#6b7280}
+.sl.due,.sl.due small{color:#b42318}
 #sumOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;display:flex;align-items:flex-end;justify-content:center}
 #sumOv .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px;max-height:90vh;overflow:auto}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
@@ -243,6 +258,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
 </div></div>
 <div id="histOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><button id="hPrev" style="flex:0 0 48px">‹</button><b id="hTitle" style="text-align:center;font-size:17px"></b><button id="hNext" style="flex:0 0 48px">›</button><button id="histClose" style="flex:0 0 48px">✕</button></div>
+  <div class="seg"><button id="hvAll" class="on">📅 Theo ngày</button><button id="hvShip">🚚 Tiền ship</button></div>
   <div id="histBody"></div>
   <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e3e5e8">
     <b>Nhập / sửa đơn cho ngày đã qua</b>
@@ -253,6 +269,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
 <div id="sumOv" class="hidden"><div class="sheet">
   <div class="row" style="align-items:center"><b style="font-size:18px" id="sumTitle">Tổng kết hôm nay</b><button id="sumClose" style="flex:0 0 auto">✕</button></div>
   <div id="sumBody"></div>
+  <button class="big" id="sumShip">🚚 Tiền ship các ngày</button>
   <div class="row"><button class="primary big" id="sumCopy">Sao chép bảng tổng</button></div>
 </div></div>
 <div id="toast" class="hidden"><span id="toastTxt"></span> <button id="toastCopy">Sao chép lại</button></div>
@@ -997,9 +1014,43 @@ function dayStat(d){
   const x=summary(d.orders),c=d.money?calcMoney(d.orders,d.money):null;
   return{x,c,net:c&&c.v.end?c.net:null};
 }
+/* bảng tiền ship theo ngày: tiền ship đơn đã thu (đơn chưa thu ghi riêng, màu đỏ); bấm ngày xem từng đơn */
+let hView="all",sTot=null;
+function shipDet(d,os){
+  const lv={},sk=v=>v?mk(v):"0đ";os.forEach(o=>{const s=o.ship||0;lv[s]=(lv[s]||0)+1});
+  const lvs=Object.keys(lv).map(Number).sort((a,b)=>b-a).map(s=>"<b>"+sk(s)+"</b> × "+lv[s]+" đơn").join(" · ");
+  return '<div style="margin-bottom:4px">Mức ship: '+lvs+"</div>"+
+    os.map((o,i)=>'<div class="sl'+(o.paid?"":" due")+'"><span>'+(i+1)+". "+esc(o.phone||"?")+" <small>· "+(o.paid?(o.cash?"TM":o.msgSent?"SMS":"QR"):"chưa thu")+" · hàng "+mk(o.goods||0)+"</small></span><b>"+sk(o.ship||0)+"</b></div>").join("")+
+    (d!==today()?'<button class="blue" data-open="'+d+'" style="margin-top:8px;width:100%">✎ Mở '+(d===realToday()?"hôm nay":"ngày này")+" để nhập/sửa đơn</button>":"");
+}
+function paintShip(all){
+  const days=Object.keys(all).filter(d=>d.startsWith(hMonth)&&all[d].orders.length).sort().reverse();
+  const T={n:0,ship:0,due:0,lines:[]};
+  const rows=days.map(d=>{
+    const os=all[d].orders,x=summary(os),dd=(+d.slice(8))+"/"+(+d.slice(5,7)),on=hOpen===d;
+    T.n+=os.length;T.ship+=x.ship;T.due+=x.due.ship;
+    T.lines.unshift(dd+": "+os.length+" đơn · ship "+mk(x.ship)+(x.due.ship?" (+ "+mk(x.due.ship)+" chưa thu)":""));
+    return '<tr data-day="'+d+'"'+(on?' class="on"':"")+"><td>"+(on?"▾ ":"▸ ")+dd+(d===realToday()?' <small class="muted">hôm nay</small>':"")+(WORKDAY&&d===WORKDAY?' <small class="muted">đang mở</small>':"")+"</td><td>"+os.length+"</td><td>"+mk(x.ship)+
+      (x.due.ship?'<div class="dueS">+ '+mk(x.due.ship)+" chưa thu</div>":"")+"</td></tr>"+
+      (on?'<tr><td colspan="3" class="det">'+shipDet(d,os)+"</td></tr>":"");
+  });
+  const R=(a,b,c)=>"<tr"+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
+  $("histBody").innerHTML=days.length?'<table class="sumt">'+
+    R("Số ngày làm",days.length)+R("Số đơn",T.n)+R("Trung bình 1 ngày",mk(Math.round(T.ship/days.length/1000)*1000))+
+    R("Tổng tiền ship",mk(T.ship),"big")+
+    (T.due?R('<span style="color:#b42318">Ship chưa thu</span>','<span style="color:#b42318">'+mk(T.due)+"</span>"):"")+
+    '</table><p class="muted" style="margin:0 0 4px">Bấm vào một ngày để xem tiền ship từng đơn.</p>'+
+    '<table class="shipt"><thead><tr><th>Ngày</th><th>Đơn</th><th>Tiền ship</th></tr></thead><tbody>'+rows.join("")+"</tbody></table>"
+    :'<p class="muted">Chưa có đơn tháng này.</p>';
+  sTot=Object.assign(T,{days:days.length});
+}
 function paintHist(){
-  const all=dayData(),days=Object.keys(all).filter(d=>d.startsWith(hMonth)&&(all[d].orders.length||all[d].money)).sort().reverse();
+  const all=dayData();
   const [y,m]=hMonth.split("-");$("hTitle").textContent="Tháng "+(+m)+"/"+y;
+  $("hvAll").classList.toggle("on",hView!=="ship");$("hvShip").classList.toggle("on",hView==="ship");
+  $("hCopy").textContent=hView==="ship"?"Sao chép bảng tiền ship":"Sao chép tổng tháng";
+  if(hView==="ship"){paintShip(all);return}
+  const days=Object.keys(all).filter(d=>d.startsWith(hMonth)&&(all[d].orders.length||all[d].money)).sort().reverse();
   const T={n:0,qr:0,sms:0,tm:0,tot:0,goods:0,ship:0,net:0,netDays:0,due:0};
   const rows=days.map(d=>{
     const st=dayStat(all[d]),x=st.x;
@@ -1047,8 +1098,17 @@ $("histOv").addEventListener("click",e=>{if(e.target.id==="histOv")$("histOv").c
 $("hPrev").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m-2,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
 $("hNext").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
 $("histBody").addEventListener("click",e=>{const ob=e.target.closest&&e.target.closest("[data-open]");if(ob){openDay(ob.dataset.open);return}const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
+$("hvAll").onclick=()=>{hView="all";hOpen=null;paintHist()};
+$("hvShip").onclick=()=>{hView="ship";hOpen=null;paintHist()};
 $("hCopy").onclick=async()=>{
-  const T=hTot;if(!T)return;const [y,m]=hMonth.split("-");
+  const [y,m]=hMonth.split("-");
+  if(hView==="ship"){
+    const S=sTot;if(!S||!S.days){toast("Chưa có đơn tháng này.");return}
+    const t=["Tiền ship tháng "+(+m)+"/"+y].concat(S.lines).concat(["Tổng ship: "+mk(S.ship)+" ("+S.n+" đơn, "+S.days+" ngày)"]).concat(S.due?["Ship chưa thu: "+mk(S.due)]:[]).join("\n");
+    try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
+    return;
+  }
+  const T=hTot;if(!T)return;
   const t=["Tổng tháng "+(+m)+"/"+y,"Đơn đã thu: "+T.n,"QR: "+mk(T.qr),"SMS: "+mk(T.sms),"Tiền mặt: "+mk(T.tm),"Tổng đã thu: "+mk(T.tot),"Tiền hàng: "+mk(T.goods),"Tiền ship: "+mk(T.ship)].concat(T.netDays?["Được hưởng: "+mk(T.net)]:[]).concat(T.due?["Còn chưa thu: "+mk(T.due)]:[]).join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
@@ -1091,6 +1151,7 @@ function openSum(){
   $("sumOv").classList.remove("hidden");
 }
 $("btnSum").onclick=openSum;
+$("sumShip").onclick=()=>{$("sumOv").classList.add("hidden");hView="ship";$("btnHist").onclick()};
 $("sumClose").onclick=()=>$("sumOv").classList.add("hidden");
 $("sumOv").addEventListener("click",e=>{if(e.target.id==="sumOv")$("sumOv").classList.add("hidden")});
 $("sumCopy").onclick=async()=>{

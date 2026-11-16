@@ -39,6 +39,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
 - 📊 Tổng: QR/SMS/TM, tiền hàng, ship (+ ship chưa thu), chưa thu. 📅 Lịch sử: theo ngày, tổng tháng.
+- 📅 có 2 chế độ (`hView`): "Theo ngày" và "🚚 Tiền ship" (`paintShip`): bảng Ngày | Đơn | Tiền ship theo tháng,
+  ship tính đơn đã thu, ship đơn chưa thu ghi đỏ riêng; bấm ngày xem mức ship + từng đơn (`shipDet`). Nút trong 📊 mở thẳng.
 - Sang ngày mới: đơn + bảng tiền ngày cũ cất vào `ship_hist` (không xóa). Ảnh chỉ giữ trong ngày.
 - Nhập/sửa đơn ngày đã qua: 📅 → chọn ngày → "Mở ngày" (hoặc nút trong ngày đang mở rộng). `WORKDAY` đè lên `today()`;
   `loadDay()` cất ngày đang mở vào `ship_hist` rồi lấy ngày cần mở RA KHỎI `ship_hist` (để sửa/xóa không bị bản cũ đè).
