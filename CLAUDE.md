@@ -40,16 +40,18 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;
   số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS + cộng/trừ SMS.
-  Ô cộng/trừ (`adjQ`, `adjS`) gõ được số âm ("-50k", "30k-10k", `parseSigned`), có nút ± đổi dấu vì bàn phím khó gõ "-".
-  Trong ô cộng/trừ dấu phẩy là CỘNG (người dùng yêu cầu): "165,645" = 165k + 645k, "-165,645" = trừ cả hai; "1,5tr" vẫn
-  là 1,5 triệu. Các ô tiền khác (`parseMoney`) vẫn coi "165,645" là 165.645đ.
+  Mọi ô tiền trong 💰 (nợ, mua đồ, rút, cộng/trừ) đọc bằng `parseSigned`: gõ được số âm ("-50k", "30k-10k"), ô cộng/trừ
+  (`adjQ`, `adjS`) có nút ± đổi dấu vì bàn phím khó gõ "-". Dấu phẩy là CỘNG (người dùng yêu cầu): "165,645" = 165k + 645k,
+  "-165,645" = trừ cả hai; "1,5tr" vẫn là 1,5 triệu; số có đuôi ",000" ("1,200,000") vẫn là một số.
+  Chỗ khác (tiền hàng trong đơn, `parseMoney`) vẫn coi "165,645" là 165.645đ.
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
 - 💰 "Tổng tiền" gộp cả bảng tổng (người dùng yêu cầu, bỏ nút 📊 riêng): đầu bảng là tổng kết (`paintSum`: QR/SMS/TM,
   tiền hàng, ship + ship chưa thu, chưa thu), dưới là "Tiền được hưởng" (đếm tờ, nợ, mua đồ…). 2 nút sao chép: tổng / tiền.
 - 📅 chỉ còn bảng tiền ship theo tháng (`paintShip`; bảng "Theo ngày" người dùng thấy thừa nên đã bỏ): Ngày | Đơn |
   Tiền ship. Tiền ship = ship MỌI đơn, kể cả đơn chưa thu; đơn chưa thu chỉ ghi "n đơn chưa thu" (người dùng yêu cầu).
-  Bấm ngày xem mức ship + từng đơn (`shipDet`) và nút mở ngày đó để sửa.
+  Bấm ngày xem mức ship + từng đơn (`shipDet`: SĐT, cách thu, hàng, ship, số tiền thu, nội dung đơn bỏ dòng "Sdt:")
+  và nút mở ngày đó để sửa.
 - Sang ngày mới: đơn + bảng tiền ngày cũ cất vào `ship_hist` (không xóa). Ảnh chỉ giữ trong ngày.
 - Nhập/sửa đơn ngày đã qua: 📅 → chọn ngày → "Mở ngày" (hoặc nút trong ngày đang mở rộng). `WORKDAY` đè lên `today()`;
   `loadDay()` cất ngày đang mở vào `ship_hist` rồi lấy ngày cần mở RA KHỎI `ship_hist` (để sửa/xóa không bị bản cũ đè).

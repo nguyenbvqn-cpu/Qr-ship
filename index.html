@@ -114,8 +114,10 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .shipt tr.on td{background:#eef7f1}
 .shipt td.det{text-align:left;font-weight:400;font-size:14px;background:#f7f8fa;border-top:0;padding:8px 10px}
 .shipt .dueS{font-size:12px;color:#b42318;font-weight:600}
-.sl{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed #d5d8de}
+.sl{padding:7px 0;border-top:1px dashed #d5d8de}
+.sl .r{display:flex;justify-content:space-between;gap:8px}
 .sl small{color:#6b7280}
+.sl .n{font-size:13px;color:#4b5563;white-space:pre-line;margin:2px 0 0 1.3em;line-height:1.4}
 .sl.due,.sl.due small{color:#b42318}
 .msec{display:block;font-size:17px;margin-top:14px;padding-top:12px;border-top:2px solid #e3e5e8}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
@@ -244,7 +246,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   </table>
   <p class="muted" id="csHint" style="margin:4px 0 0"></p>
   <div class="mrow"><label>Tiền nợ</label><input id="mDebt" inputmode="text" placeholder="0"></div>
-  <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300k+150k"></div>
+  <div class="mrow"><label>Tiền bỏ ra mua đồ</label><input id="mBuy" inputmode="text" placeholder="vd 300,150"></div>
   <div class="mrow"><label>Cộng/trừ TK QR</label><button class="pm" data-pm="mAq">±</button><input id="mAq" inputmode="text" placeholder="vd 165,645"></div>
   <div class="mrow"><label>Cộng/trừ TK SMS</label><button class="pm" data-pm="mAs">±</button><input id="mAs" inputmode="text" placeholder="vd 165,645"></div>
   <button class="big" id="wdBtn" style="margin-top:10px">🏧 Rút tiền</button>
@@ -252,8 +254,8 @@ if(!hasToken())document.documentElement.classList.add("locked");
     <div class="mrow"><label>Rút từ tài khoản QR</label><input id="mWq" inputmode="text" placeholder="0"></div>
     <div class="mrow"><label>Rút từ tài khoản SMS</label><input id="mWs" inputmode="text" placeholder="0"></div>
   </div>
-  <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000 hoặc cộng nhiều khoản: 300k+150k.
-    Ô cộng/trừ: dấu phẩy là cộng (165,645 = 165k + 645k), bấm ± để thành số âm.</p>
+  <p class="muted" style="margin:6px 0 0">Gõ được 500k, 1tr2, 1.200.000. Cộng nhiều khoản: 300k+150k hoặc dấu phẩy
+    (165,645 = 165k + 645k). Ô cộng/trừ: bấm ± để thành số âm.</p>
   <div id="monBody"></div>
   <div class="row"><button class="primary big" id="sumCopy">Sao chép tổng</button><button class="primary big" id="monCopy">Sao chép tiền</button></div>
 </div></div>
@@ -770,11 +772,12 @@ function paintDay(){
 }
 $("dayBack").onclick=()=>openDay(null);
 const MF={debt:"mDebt",buy:"mBuy",wq:"mWq",ws:"mWs",adjQ:"mAq",adjS:"mAs"};
-const SIGNED={adjQ:1,adjS:1};
-/* ô cộng/trừ: gõ được số âm ("-50k", "30k-10k"); dấu phẩy là CỘNG: "165,645" = 165k + 645k,
-   "-165,645" = trừ cả hai. Riêng "1,5tr" vẫn là 1 triệu rưỡi. */
+/* mọi ô tiền trong 💰 (nợ, mua đồ, rút, cộng/trừ): gõ được số âm ("-50k", "30k-10k"); dấu phẩy là CỘNG:
+   "165,645" = 165k + 645k, "-165,645" = trừ cả hai. Riêng "1,5tr" vẫn là 1 triệu rưỡi, và số viết kiểu
+   "1,200,000" / "500,000" (đuôi ,000) vẫn là một số. */
 function parseSigned(t){
-  const parts=String(t||"").replace(/[−–—]/g,"-").replace(/(\d),(\d)\s*(tr)/gi,"$1.$2$3").match(/[+\-]?[^+\-]+/g)||[];
+  const parts=String(t||"").replace(/[−–—]/g,"-").replace(/(\d),(\d)\s*(tr)/gi,"$1.$2$3")
+    .replace(/(?<![\d,])\d{1,3}(?:,\d{3})*,000(?![\d,])/g,s=>s.replace(/,/g,"")).match(/[+\-]?[^+\-]+/g)||[];
   return parts.reduce((s,p)=>{
     p=p.trim();const neg=p[0]==="-";
     const v=p.replace(/^[+\-]\s*/,"").split(/[,;]/).reduce((a,q)=>a+parseMoney(q),0);
@@ -809,7 +812,7 @@ function carryStart(){
 $("wdBtn").onclick=()=>$("wdBox").classList.toggle("hidden");
 function calcMoney(list,m){
   list=list||orders;m=m||money;
-  const x=summary(list),v={};Object.keys(MF).forEach(k=>v[k]=SIGNED[k]?parseSigned(m[k]):parseMoney(m[k]));
+  const x=summary(list),v={};Object.keys(MF).forEach(k=>v[k]=parseSigned(m[k]));
   v.start=denSum(m.cs);v.end=denSum(m.ce);
   const sw=list.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
   const diff=v.end-v.start;
@@ -1031,7 +1034,12 @@ function shipDet(d,os){
   const lv={},sk=v=>v?mk(v):"0đ";os.forEach(o=>{const s=o.ship||0;lv[s]=(lv[s]||0)+1});
   const lvs=Object.keys(lv).map(Number).sort((a,b)=>b-a).map(s=>"<b>"+sk(s)+"</b> × "+lv[s]+" đơn").join(" · ");
   return '<div style="margin-bottom:4px">Mức ship: '+lvs+"</div>"+
-    os.map((o,i)=>'<div class="sl'+(o.paid?"":" due")+'"><span>'+(i+1)+". "+esc(o.phone||"?")+" <small>· "+(o.paid?(o.cash?"TM":o.msgSent?"SMS":"QR"):"chưa thu")+" · hàng "+mk(o.goods||0)+"</small></span><b>"+sk(o.ship||0)+"</b></div>").join("")+
+    os.map((o,i)=>{
+      /* nội dung đơn (món, địa chỉ…); bỏ dòng chỉ còn nhãn "Sdt:" sau khi đã tách SĐT */
+      const nt=noteText(o).split("\n").filter(l=>!/^(s[đd]t|số điện thoại|so dien thoai|đt|dt)\s*[:.\-]?$/i.test(l)).join("\n");
+      return '<div class="sl'+(o.paid?"":" due")+'"><div class="r"><span>'+(i+1)+". "+esc(o.phone||"?")+" <small>· "+(o.paid?(o.cash?"TM":o.msgSent?"SMS":"QR"):"chưa thu")+" · hàng "+mk(o.goods||0)+"</small></span><b>"+sk(o.ship||0)+"</b></div>"+
+        '<div class="n">'+(o.paid?"Thu ":"Cần thu ")+mk(recvAmount(o))+(nt?"\n"+esc(nt):"")+"</div></div>";
+    }).join("")+
     (d!==today()?'<button class="blue" data-open="'+d+'" style="margin-top:8px;width:100%">✎ Mở '+(d===realToday()?"hôm nay":"ngày này")+" để nhập/sửa đơn</button>":"");
 }
 function paintShip(all){
