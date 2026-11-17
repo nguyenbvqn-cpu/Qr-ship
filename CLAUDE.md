@@ -51,7 +51,9 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - 📅 chỉ còn bảng tiền ship theo tháng (`paintShip`; bảng "Theo ngày" người dùng thấy thừa nên đã bỏ): Ngày | Đơn |
   Tiền ship. Tiền ship = ship MỌI đơn, kể cả đơn chưa thu; đơn chưa thu chỉ ghi "n đơn chưa thu" (người dùng yêu cầu).
   Bấm ngày xem mức ship + từng đơn (`shipDet`: SĐT, cách thu, hàng, ship, số tiền thu, nội dung đơn bỏ dòng "Sdt:")
-  và nút mở ngày đó để sửa.
+  và nút mở ngày đó để sửa. Đơn chưa thu có nút "Mở đơn: nhắn nhắc / xác nhận đã thu" (`data-go`, `goOrder`, người dùng
+  yêu cầu): mở ngày đó nếu khác ngày đang mở, sang đúng tab, cuộn tới thẻ đơn, tô viền vàng 5 giây (`flashId`);
+  đơn ở tab Mới thì mở sẵn ⋯ để thấy "Đã thu QR".
 - Sang ngày mới: đơn + bảng tiền ngày cũ cất vào `ship_hist` (không xóa). Ảnh chỉ giữ trong ngày.
 - Nhập/sửa đơn ngày đã qua: 📅 → chọn ngày → "Mở ngày" (hoặc nút trong ngày đang mở rộng). `WORKDAY` đè lên `today()`;
   `loadDay()` cất ngày đang mở vào `ship_hist` rồi lấy ngày cần mở RA KHỎI `ship_hist` (để sửa/xóa không bị bản cũ đè).

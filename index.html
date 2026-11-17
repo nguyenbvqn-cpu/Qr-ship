@@ -119,6 +119,9 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .sl small{color:#6b7280}
 .sl .n{font-size:13px;color:#4b5563;white-space:pre-line;margin:2px 0 0 1.3em;line-height:1.4}
 .sl.due,.sl.due small{color:#b42318}
+.sl.due{cursor:pointer}
+.sl .go{display:block;width:100%;margin-top:6px;padding:9px 8px;font-size:15px}
+.order.flash{outline:3px solid #f59e0b;outline-offset:2px}
 .msec{display:block;font-size:17px;margin-top:14px;padding-top:12px;border-top:2px solid #e3e5e8}
 .sumt{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
 .sumt td{padding:8px 4px;border-bottom:1px solid #e3e5e8}
@@ -546,6 +549,7 @@ const ICON={
 };
 function noteText(o){return String(o.note||"").replace(PHONE_RE,"").split("\n").map(x=>x.trim()).filter(Boolean).join("\n")}
 let tab=load("ship_tab","n");
+let flashId=null,flashT=0;  /* đơn vừa mở từ 📅: tô viền vàng (goOrder) */
 const editing=new Set();
 let photos=load("ship_photos",{});
 function savePhotos(){try{localStorage.setItem("ship_photos",JSON.stringify(photos));return true}catch(e){return false}}
@@ -619,7 +623,7 @@ function render(){
         </div>
         <div class="acts" style="margin-top:8px">${sec}${B("del","Xóa","danger")}</div>
       </div>`:"";
-    return `<div class="card order ${o.paid?"paid":""}" data-i="${i}">
+    return `<div class="card order ${o.paid?"paid":""}${o.id===flashId?" flash":""}" data-i="${i}">
       <div class="hd"><div class="phone">${phone}</div><div class="total">${mk(shownAmount(o))}</div></div>
       ${bd?'<div style="margin-top:2px">'+bd+"</div>":""}
       ${nt?'<div class="note'+(open?"":" clamp")+'">'+esc(nt)+"</div>":""}
@@ -1037,8 +1041,10 @@ function shipDet(d,os){
     os.map((o,i)=>{
       /* nội dung đơn (món, địa chỉ…); bỏ dòng chỉ còn nhãn "Sdt:" sau khi đã tách SĐT */
       const nt=noteText(o).split("\n").filter(l=>!/^(s[đd]t|số điện thoại|so dien thoai|đt|dt)\s*[:.\-]?$/i.test(l)).join("\n");
-      return '<div class="sl'+(o.paid?"":" due")+'"><div class="r"><span>'+(i+1)+". "+esc(o.phone||"?")+" <small>· "+(o.paid?(o.cash?"TM":o.msgSent?"SMS":"QR"):"chưa thu")+" · hàng "+mk(o.goods||0)+"</small></span><b>"+sk(o.ship||0)+"</b></div>"+
-        '<div class="n">'+(o.paid?"Thu ":"Cần thu ")+mk(recvAmount(o))+(nt?"\n"+esc(nt):"")+"</div></div>";
+      /* đơn chưa thu: bấm vào để mở đơn ở màn hình chính (nhắn nhắc / xác nhận đã thu) */
+      return '<div class="sl'+(o.paid?"":" due")+'"'+(o.paid?"":' data-go="'+esc(d+"|"+o.id)+'"')+'><div class="r"><span>'+(i+1)+". "+esc(o.phone||"?")+" <small>· "+(o.paid?(o.cash?"TM":o.msgSent?"SMS":"QR"):"chưa thu")+" · hàng "+mk(o.goods||0)+"</small></span><b>"+sk(o.ship||0)+"</b></div>"+
+        '<div class="n">'+(o.paid?"Thu ":"Cần thu ")+mk(recvAmount(o))+(nt?"\n"+esc(nt):"")+"</div>"+
+        (o.paid?"":'<button class="blue go">Mở đơn: nhắn nhắc / xác nhận đã thu ›</button>')+"</div>";
     }).join("")+
     (d!==today()?'<button class="blue" data-open="'+d+'" style="margin-top:8px;width:100%">✎ Mở '+(d===realToday()?"hôm nay":"ngày này")+" để nhập/sửa đơn</button>":"");
 }
@@ -1083,7 +1089,21 @@ $("histClose").onclick=()=>$("histOv").classList.add("hidden");
 $("histOv").addEventListener("click",e=>{if(e.target.id==="histOv")$("histOv").classList.add("hidden")});
 $("hPrev").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m-2,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
 $("hNext").onclick=()=>{const [y,m]=hMonth.split("-").map(Number),d=new Date(y,m,1);hMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");hOpen=null;paintHist()};
-$("histBody").addEventListener("click",e=>{const ob=e.target.closest&&e.target.closest("[data-open]");if(ob){openDay(ob.dataset.open);return}const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
+/* 📅 bấm đơn chưa thu: mở ngày đó (nếu khác ngày đang mở), sang đúng tab, cuộn tới đơn và tô viền vàng một lúc.
+   Đơn ở tab Mới thì mở sẵn ⋯ để thấy nút "Đã thu QR". */
+function goOrder(d,id){
+  if(d!==today())openDay(d);
+  $("histOv").classList.add("hidden");
+  const o=orders.find(x=>String(x.id)===id);
+  if(!o){toast("Không tìm thấy đơn này.");return}
+  const st=stageOf(o);flashId=o.id;if(st==="n")editing.add(o.id);setTab(st);
+  const el=document.querySelector('.order[data-i="'+orders.indexOf(o)+'"]');
+  if(el&&el.scrollIntoView)el.scrollIntoView({block:"center"});
+  toast("Đơn "+(o.phone||"chưa có SĐT")+" · "+dayName()+(WORKDAY?". Xong bấm “Về hôm nay”.":""));
+  clearTimeout(flashT);flashT=setTimeout(()=>{flashId=null;document.querySelectorAll(".order.flash").forEach(x=>x.classList.remove("flash"))},5000);
+}
+$("histBody").addEventListener("click",e=>{const ob=e.target.closest&&e.target.closest("[data-open]");if(ob){openDay(ob.dataset.open);return}
+  const go=e.target.closest&&e.target.closest("[data-go]");if(go){const k=go.dataset.go.indexOf("|");goOrder(go.dataset.go.slice(0,k),go.dataset.go.slice(k+1));return}const el=e.target.closest&&e.target.closest("[data-day]");if(!el)return;hOpen=hOpen===el.dataset.day?null:el.dataset.day;paintHist()});
 $("hCopy").onclick=async()=>{
   const [y,m]=hMonth.split("-"),S=sTot;
   if(!S||!S.days){toast("Chưa có đơn tháng này.");return}
