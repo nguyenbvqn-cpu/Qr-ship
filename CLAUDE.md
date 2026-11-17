@@ -49,7 +49,11 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - 💰 "Tổng tiền" gộp cả bảng tổng (người dùng yêu cầu, bỏ nút 📊 riêng): đầu bảng là tổng kết (`paintSum`: QR/SMS/TM,
   tiền hàng, ship + ship chưa thu, chưa thu), dưới là "Tiền được hưởng" (đếm tờ, nợ, mua đồ…). 2 nút sao chép: tổng / tiền.
 - 📅 chỉ còn bảng tiền ship theo tháng (`paintShip`; bảng "Theo ngày" người dùng thấy thừa nên đã bỏ): Ngày | Đơn |
-  Tiền ship. Tiền ship = ship MỌI đơn, kể cả đơn chưa thu; đơn chưa thu chỉ ghi "n đơn chưa thu" (người dùng yêu cầu).
+  Ship | Thực nhận. Ship = ship MỌI đơn theo đơn, kể cả đơn chưa thu; đơn chưa thu chỉ ghi "n đơn chưa thu" (dưới ngày).
+  Thực nhận = "Được hưởng" ở 💰 của ngày đó (`dayNet` → `calcMoney(orders, money)`), vì khách bo thêm nên tiền thật
+  khác tiền ship (người dùng yêu cầu: ship 500k nhưng thực nhận 520k). Ngày chưa đếm cuối ngày (`counted`: chưa ô
+  cuối ngày nào có số) ghi "chưa đếm", không cộng vào tổng; đầu ngày chưa sửa tay thì lấy cuối ngày trước như `carryStart`.
+  Dòng to ở đầu là "Thực nhận (đếm tiền)"; "Trung bình 1 ngày" tính theo thực nhận các ngày đã đếm.
   Bấm ngày xem mức ship + từng đơn (`shipDet`: SĐT, cách thu, hàng, ship, số tiền thu, nội dung đơn bỏ dòng "Sdt:")
   và nút mở ngày đó để sửa. Đơn chưa thu có nút "Mở đơn: nhắn nhắc / xác nhận đã thu" (`data-go`, `goOrder`, người dùng
   yêu cầu): mở ngày đó nếu khác ngày đang mở, sang đúng tab, cuộn tới thẻ đơn, tô viền vàng 5 giây (`flashId`);

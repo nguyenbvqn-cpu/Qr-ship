@@ -114,6 +114,9 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 .shipt tr.on td{background:#eef7f1}
 .shipt td.det{text-align:left;font-weight:400;font-size:14px;background:#f7f8fa;border-top:0;padding:8px 10px}
 .shipt .dueS{font-size:12px;color:#b42318;font-weight:600}
+.shipt td.sp{font-weight:400;color:#4b5563}
+.shipt td.net{color:#0b7a43}
+.nc{font-size:12px;color:#6b7280;font-weight:400}
 .sl{padding:7px 0;border-top:1px dashed #d5d8de}
 .sl .r{display:flex;justify-content:space-between;gap:8px}
 .sl small{color:#6b7280}
@@ -1032,12 +1035,29 @@ function dayData(){
   const t=today();out[t]={orders:orders.slice(),money:money&&money.day===t?money:null};
   return out;
 }
-/* 📅 = bảng tiền ship theo ngày: ship của mọi đơn (cả đơn chưa thu), đơn chưa thu chỉ ghi số đơn; bấm ngày xem từng đơn */
+/* 📅 = bảng tiền theo ngày: ship theo đơn (mọi đơn, cả đơn chưa thu; đơn chưa thu chỉ ghi số đơn) và THỰC NHẬN
+   = "Được hưởng" ở 💰 (đếm tiền, gồm cả tiền khách bo — người dùng yêu cầu: ship 500k nhưng thực nhận có thể 520k).
+   Ngày chưa đếm tiền cuối ngày thì ghi "chưa đếm", không cộng vào tổng thực nhận. Bấm ngày xem từng đơn. */
 let sTot=null;
-function shipDet(d,os){
+const sgM=n=>(n<0?"−":"")+mk(Math.abs(n));
+const counted=m=>!!m&&Object.values(m.ce||{}).some(v=>v!==""&&v!=null);
+function dayNet(all,d){
+  const m=all[d].money;if(!counted(m))return null;
+  let mm=m;
+  /* đầu ngày chưa sửa tay: lấy cuối ngày của ngày gần nhất trước đó có đếm (giống carryStart) */
+  if(!m.csManual&&(m.csFrom||!DENOMS.some(k=>+((m.cs||{})[k])))){
+    const p=Object.keys(all).filter(x=>x<d&&all[x].money&&denSum(all[x].money.ce)>0).sort().pop();
+    if(p)mm=Object.assign({},m,{cs:all[p].money.ce});
+  }
+  return calcMoney(all[d].orders,mm).net;
+}
+function shipDet(d,os,net){
   const lv={},sk=v=>v?mk(v):"0đ";os.forEach(o=>{const s=o.ship||0;lv[s]=(lv[s]||0)+1});
   const lvs=Object.keys(lv).map(Number).sort((a,b)=>b-a).map(s=>"<b>"+sk(s)+"</b> × "+lv[s]+" đơn").join(" · ");
-  return '<div style="margin-bottom:4px">Mức ship: '+lvs+"</div>"+
+  const ship=os.reduce((a,o)=>a+(o.ship||0),0);
+  return '<div style="margin-bottom:4px">'+(net===null?'<span class="nc" style="font-size:13px">Chưa đếm tiền ngày này'+(d===today()?": bấm 💰 Tổng tiền để đếm cuối ngày.":": bấm nút mở ngày ở cuối rồi bấm 💰 Tổng tiền.")+"</span>"
+      :"Thực nhận: <b>"+sgM(net)+"</b> · ship theo đơn "+mk(ship)+" (chênh "+sgn(net-ship)+")")+"</div>"+
+    '<div style="margin-bottom:4px">Mức ship: '+lvs+"</div>"+
     os.map((o,i)=>{
       /* nội dung đơn (món, địa chỉ…); bỏ dòng chỉ còn nhãn "Sdt:" sau khi đã tách SĐT */
       const nt=noteText(o).split("\n").filter(l=>!/^(s[đd]t|số điện thoại|so dien thoai|đt|dt)\s*[:.\-]?$/i.test(l)).join("\n");
@@ -1050,22 +1070,27 @@ function shipDet(d,os){
 }
 function paintShip(all){
   const days=Object.keys(all).filter(d=>d.startsWith(hMonth)&&all[d].orders.length).sort().reverse();
-  const T={n:0,ship:0,due:0,lines:[]};
+  const T={n:0,ship:0,due:0,net:0,nd:0,unc:[],lines:[]};
   const rows=days.map(d=>{
-    const os=all[d].orders,ship=os.reduce((a,o)=>a+(o.ship||0),0),due=os.filter(o=>!o.paid).length,dd=(+d.slice(8))+"/"+(+d.slice(5,7)),on=hOpen===d;
+    const os=all[d].orders,ship=os.reduce((a,o)=>a+(o.ship||0),0),due=os.filter(o=>!o.paid).length,dd=(+d.slice(8))+"/"+(+d.slice(5,7)),on=hOpen===d,net=dayNet(all,d);
     T.n+=os.length;T.ship+=ship;T.due+=due;
-    T.lines.unshift(dd+": "+os.length+" đơn · ship "+mk(ship)+(due?" ("+due+" đơn chưa thu)":""));
-    return '<tr data-day="'+d+'"'+(on?' class="on"':"")+"><td>"+(on?"▾ ":"▸ ")+dd+(d===realToday()?' <small class="muted">hôm nay</small>':"")+(WORKDAY&&d===WORKDAY?' <small class="muted">đang mở</small>':"")+"</td><td>"+os.length+"</td><td>"+mk(ship)+
-      (due?'<div class="dueS">'+due+" đơn chưa thu</div>":"")+"</td></tr>"+
-      (on?'<tr><td colspan="3" class="det">'+shipDet(d,os)+"</td></tr>":"");
+    if(net===null)T.unc.unshift(dd);else{T.net+=net;T.nd++}
+    T.lines.unshift(dd+": "+os.length+" đơn · ship "+mk(ship)+" · thực nhận "+(net===null?"chưa đếm":sgM(net))+(due?" ("+due+" đơn chưa thu)":""));
+    return '<tr data-day="'+d+'"'+(on?' class="on"':"")+"><td>"+(on?"▾ ":"▸ ")+dd+(d===realToday()?' <small class="muted">hôm nay</small>':"")+(WORKDAY&&d===WORKDAY?' <small class="muted">đang mở</small>':"")+
+      (due?'<div class="dueS">'+due+" đơn chưa thu</div>":"")+"</td><td>"+os.length+'</td><td class="sp">'+mk(ship)+'</td><td class="net">'+(net===null?'<span class="nc">chưa đếm</span>':sgM(net))+"</td></tr>"+
+      (on?'<tr><td colspan="4" class="det">'+shipDet(d,os,net)+"</td></tr>":"");
   });
   const R=(a,b,c)=>"<tr"+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
+  const avg=T.nd?R("Trung bình 1 ngày"+'<div class="nc">thực nhận, '+T.nd+" ngày đã đếm</div>",sgM(Math.round(T.net/T.nd/1000)*1000))
+    :R("Trung bình 1 ngày"+'<div class="nc">theo tiền ship</div>',mk(Math.round(T.ship/days.length/1000)*1000));
   $("histBody").innerHTML=days.length?'<table class="sumt">'+
-    R("Số ngày làm",days.length)+R("Số đơn",T.n)+R("Trung bình 1 ngày",mk(Math.round(T.ship/days.length/1000)*1000))+
-    R("Tổng tiền ship",mk(T.ship),"big")+
+    R("Số ngày làm",days.length)+R("Số đơn",T.n)+
+    R("Tiền ship theo đơn",mk(T.ship))+
+    R("Thực nhận (đếm tiền)"+(T.unc.length?'<div class="nc">chưa đếm: '+T.unc.join(", ")+"</div>":""),T.nd?sgM(T.net):"—","big")+
+    avg+
     (T.due?R('<span style="color:#b42318">Chưa thu</span>','<span style="color:#b42318">'+T.due+" đơn</span>"):"")+
-    '</table><p class="muted" style="margin:0 0 4px">Bấm vào một ngày để xem tiền ship từng đơn.</p>'+
-    '<table class="shipt"><thead><tr><th>Ngày</th><th>Đơn</th><th>Tiền ship</th></tr></thead><tbody>'+rows.join("")+"</tbody></table>"
+    '</table><p class="muted" style="margin:0 0 4px">Thực nhận = “Được hưởng” ở 💰 Tổng tiền (theo đếm tiền, gồm cả tiền khách bo). Bấm vào một ngày để xem từng đơn.</p>'+
+    '<table class="shipt"><thead><tr><th>Ngày</th><th>Đơn</th><th>Ship</th><th>Thực nhận</th></tr></thead><tbody>'+rows.join("")+"</tbody></table>"
     :'<p class="muted">Chưa có đơn tháng này.</p>';
   sTot=Object.assign(T,{days:days.length});
 }
@@ -1107,7 +1132,8 @@ $("histBody").addEventListener("click",e=>{const ob=e.target.closest&&e.target.c
 $("hCopy").onclick=async()=>{
   const [y,m]=hMonth.split("-"),S=sTot;
   if(!S||!S.days){toast("Chưa có đơn tháng này.");return}
-  const t=["Tiền ship tháng "+(+m)+"/"+y].concat(S.lines).concat(["Tổng ship: "+mk(S.ship)+" ("+S.n+" đơn, "+S.days+" ngày)"]).concat(S.due?["Chưa thu: "+S.due+" đơn"]:[]).join("\n");
+  const t=["Tiền ship tháng "+(+m)+"/"+y].concat(S.lines).concat(["Tổng ship theo đơn: "+mk(S.ship)+" ("+S.n+" đơn, "+S.days+" ngày)",
+    "Tổng thực nhận: "+(S.nd?sgM(S.net):"chưa đếm")+(S.unc.length&&S.nd?" (chưa đếm: "+S.unc.join(", ")+")":"")]).concat(S.due?["Chưa thu: "+S.due+" đơn"]:[]).join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
 
