@@ -45,9 +45,11 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   là 1,5 triệu. Các ô tiền khác (`parseMoney`) vẫn coi "165,645" là 165.645đ.
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
-- 📊 Tổng: QR/SMS/TM, tiền hàng, ship (+ ship chưa thu), chưa thu. 📅 Lịch sử: theo ngày, tổng tháng.
-- 📅 có 2 chế độ (`hView`): "Theo ngày" và "🚚 Tiền ship" (`paintShip`): bảng Ngày | Đơn | Tiền ship theo tháng,
-  ship tính đơn đã thu, ship đơn chưa thu ghi đỏ riêng; bấm ngày xem mức ship + từng đơn (`shipDet`). Nút trong 📊 mở thẳng.
+- 💰 "Tổng tiền" gộp cả bảng tổng (người dùng yêu cầu, bỏ nút 📊 riêng): đầu bảng là tổng kết (`paintSum`: QR/SMS/TM,
+  tiền hàng, ship + ship chưa thu, chưa thu), dưới là "Tiền được hưởng" (đếm tờ, nợ, mua đồ…). 2 nút sao chép: tổng / tiền.
+- 📅 chỉ còn bảng tiền ship theo tháng (`paintShip`; bảng "Theo ngày" người dùng thấy thừa nên đã bỏ): Ngày | Đơn |
+  Tiền ship. Tiền ship = ship MỌI đơn, kể cả đơn chưa thu; đơn chưa thu chỉ ghi "n đơn chưa thu" (người dùng yêu cầu).
+  Bấm ngày xem mức ship + từng đơn (`shipDet`) và nút mở ngày đó để sửa.
 - Sang ngày mới: đơn + bảng tiền ngày cũ cất vào `ship_hist` (không xóa). Ảnh chỉ giữ trong ngày.
 - Nhập/sửa đơn ngày đã qua: 📅 → chọn ngày → "Mở ngày" (hoặc nút trong ngày đang mở rộng). `WORKDAY` đè lên `today()`;
   `loadDay()` cất ngày đang mở vào `ship_hist` rồi lấy ngày cần mở RA KHỎI `ship_hist` (để sửa/xóa không bị bản cũ đè).
