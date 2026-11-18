@@ -38,8 +38,10 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   lại STK, không cần tài khoản ở ⚙ và không đổi `msgAt` (đơn không nhảy chỗ).
 - Tab SMS: dán biến động số dư → khớp theo SĐT hoặc tên người chuyển (chữ IN HOA), rồi theo số tiền; trùng số tiền thì cho chọn.
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
-- 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS;
-  số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck + chưa ck − rút SMS + cộng/trừ SMS.
+- 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS
+  + SMS chưa ck; số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck − rút SMS + cộng/trừ SMS
+  (đúng tiền thật trong TK; người dùng yêu cầu: đã ck 810k + cộng 2.700k phải ra 3.510k). "SMS chưa ck" là dòng đỏ
+  riêng ngay dưới, vẫn cộng vào được hưởng (tổng không đổi so với trước).
   Mọi ô tiền trong 💰 (nợ, mua đồ, rút, cộng/trừ) đọc bằng `parseSigned`: gõ được số âm ("-50k", "30k-10k"), ô cộng/trừ
   (`adjQ`, `adjS`) có nút ± đổi dấu vì bàn phím khó gõ "-". Dấu phẩy là CỘNG (người dùng yêu cầu): "165,645" = 165k + 645k,
   "-165,645" = trừ cả hai; "1,5tr" vẫn là 1,5 triệu; số có đuôi ",000" ("1,200,000") vẫn là một số.

@@ -823,8 +823,9 @@ function calcMoney(list,m){
   v.start=denSum(m.cs);v.end=denSum(m.ce);
   const sw=list.filter(o=>o.msgSent&&!o.cash&&!o.paid),smsDue=sw.reduce((a,o)=>a+msgAmountOf(o),0);
   const diff=v.end-v.start;
-  const balQ=x.g.qr.v-v.wq+v.adjQ,balS=x.g.sms.v+smsDue-v.ws+v.adjS;
-  const net=diff+v.buy-v.debt+balQ+balS;
+  /* số dư TK SMS = tiền thật trong TK (đã ck − rút ± cộng/trừ); SMS chưa ck là dòng riêng, vẫn cộng vào được hưởng */
+  const balQ=x.g.qr.v-v.wq+v.adjQ,balS=x.g.sms.v-v.ws+v.adjS;
+  const net=diff+v.buy-v.debt+balQ+balS+smsDue;
   return{x,v,diff,net,smsDue,smsDueN:sw.length,balQ,balS};
 }
 function paintMoney(){
@@ -836,7 +837,8 @@ function paintMoney(){
     R("+ Tiền mua đồ",mk(c.v.buy))+
     R("− Tiền nợ",mk(c.v.debt))+
     R("+ Số dư TK QR"+sub("thu "+mk(c.x.g.qr.v)+" ("+c.x.g.qr.n+" đơn)"+(c.v.wq?" − rút "+mk(c.v.wq):"")+(c.v.adjQ?" "+sgn(c.v.adjQ)+" (cộng/trừ)":"")),sg(c.balQ))+
-    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+(c.smsDue?' <span style="color:#b42318;font-weight:600">+ chưa ck '+mk(c.smsDue)+"</span>":"")+(c.v.ws?" − rút "+mk(c.v.ws):"")+(c.v.adjS?" "+sgn(c.v.adjS)+" (cộng/trừ)":"")),sg(c.balS))+
+    R("+ Số dư TK SMS"+sub("đã ck "+mk(c.x.g.sms.v)+(c.v.ws?" − rút "+mk(c.v.ws):"")+(c.v.adjS?" "+sgn(c.v.adjS)+" (cộng/trừ)":"")),sg(c.balS))+
+    (c.smsDue?R('<span style="color:#b42318">+ SMS chưa ck</span>'+sub(c.smsDueN+" đơn đã nhắn STK, khách chưa chuyển"),'<span style="color:#b42318">'+mk(c.smsDue)+"</span>"):"")+
     R("Được hưởng",sg(c.net),"big")+"</table>"+
     "";
 }
@@ -868,9 +870,10 @@ $("monCopy").onclick=async()=>{
     "Cuối ngày: "+mk(c.v.end)+" ("+DENOMS.filter(d=>+(money.ce||{})[d]).map(d=>d+"k×"+money.ce[d]).join(", ")+")",
     "Mua đồ: "+mk(c.v.buy),"Nợ: "+mk(c.v.debt),
     "Số dư TK QR: "+mk(c.balQ)+" (thu "+mk(c.x.g.qr.v)+" − rút "+mk(c.v.wq)+(c.v.adjQ?" "+sgn(c.v.adjQ)+" cộng/trừ":"")+")",
-    "Số dư TK SMS: "+mk(c.balS)+" (đã ck "+mk(c.x.g.sms.v)+" + chưa ck "+mk(c.smsDue)+" − rút "+mk(c.v.ws)+(c.v.adjS?" "+sgn(c.v.adjS)+" cộng/trừ":"")+")",
+    "Số dư TK SMS: "+mk(c.balS)+" (đã ck "+mk(c.x.g.sms.v)+" − rút "+mk(c.v.ws)+(c.v.adjS?" "+sgn(c.v.adjS)+" cộng/trừ":"")+")"]
+    .concat(c.smsDue?["SMS chưa ck: "+mk(c.smsDue)+" ("+c.smsDueN+" đơn)"]:[]).concat([
 
-    "ĐƯỢC HƯỞNG: "+mk(c.net)].join("\n");
+    "ĐƯỢC HƯỞNG: "+mk(c.net)]).join("\n");
   try{await navigator.clipboard.writeText(t);toast("✓ Đã sao chép.")}catch(e){toast(t)}
 };
 
