@@ -582,7 +582,11 @@ function tabSummary(items){
   }
   if(tab==="m"){
     const tot=os.reduce((a,o)=>a+msgAmountOf(o),0),pd=os.filter(o=>o.paid),pv=pd.reduce((a,o)=>a+msgAmountOf(o),0);
-    return '<div class="card"><b>Đã ck:</b> <span class="total" style="display:inline">'+mk(pv)+'</span> / '+mk(tot)+'<div class="muted">'+pd.length+'/'+os.length+' đơn · còn chờ '+mk(tot-pv)+'</div></div>';
+    /* "Đã ck" chỉ cộng đơn; có cộng/trừ hoặc rút ở 💰 thì hiện thêm số dư TK SMS cho khớp 💰 (người dùng hỏi sao vẫn 810k) */
+    const c=calcMoney(),ex=c.v.adjS||c.v.ws;
+    return '<div class="card"><b>Đã ck:</b> <span class="total" style="display:inline">'+mk(pv)+'</span> / '+mk(tot)+'<div class="muted">'+pd.length+'/'+os.length+' đơn · còn chờ '+mk(tot-pv)+'</div>'+
+      (ex?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #e3e5e8"><b>Số dư TK SMS:</b> <span class="total" style="display:inline">'+(c.balS<0?"−":"")+mk(Math.abs(c.balS))+'</span>'+
+        '<div class="muted">đã ck '+mk(c.x.g.sms.v)+(c.v.ws?" − rút "+mk(c.v.ws):"")+(c.v.adjS?" "+sgn(c.v.adjS)+" cộng/trừ":"")+" (sửa ở 💰 Tổng tiền)</div></div>":"")+"</div>";
   }
   return "";
 }
@@ -861,8 +865,9 @@ $("btnMoney").onclick=()=>{
   $("wdBox").classList.toggle("hidden",!(money.wq||money.ws));
   paintSum();paintMoney();$("monOv").classList.remove("hidden");
 };
-$("monClose").onclick=()=>$("monOv").classList.add("hidden");
-$("monOv").addEventListener("click",e=>{if(e.target.id==="monOv")$("monOv").classList.add("hidden")});
+/* đóng 💰 thì vẽ lại danh sách (thẻ tab SMS có số dư TK SMS theo ô cộng/trừ, rút) */
+$("monClose").onclick=()=>{$("monOv").classList.add("hidden");render()};
+$("monOv").addEventListener("click",e=>{if(e.target.id==="monOv"){$("monOv").classList.add("hidden");render()}});
 $("monCopy").onclick=async()=>{
   const c=calcMoney(),td=today();
   const t=["Tiền ngày "+(+td.slice(8))+"/"+(+td.slice(5,7)),

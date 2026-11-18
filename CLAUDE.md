@@ -42,6 +42,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   + SMS chưa ck; số dư TK QR = QR đã thu − rút QR + cộng/trừ QR; số dư TK SMS = SMS đã ck − rút SMS + cộng/trừ SMS
   (đúng tiền thật trong TK; người dùng yêu cầu: đã ck 810k + cộng 2.700k phải ra 3.510k). "SMS chưa ck" là dòng đỏ
   riêng ngay dưới, vẫn cộng vào được hưởng (tổng không đổi so với trước).
+  Thẻ đầu tab SMS: "Đã ck x / tổng" chỉ cộng đơn; khi có cộng/trừ SMS hoặc rút SMS thì thêm dòng "Số dư TK SMS" = `balS`
+  (người dùng thấy "Đã ck" vẫn 810k nên hỏi). Đóng 💰 thì `render()` lại để dòng này cập nhật.
   Mọi ô tiền trong 💰 (nợ, mua đồ, rút, cộng/trừ) đọc bằng `parseSigned`: gõ được số âm ("-50k", "30k-10k"), ô cộng/trừ
   (`adjQ`, `adjS`) có nút ± đổi dấu vì bàn phím khó gõ "-". Dấu phẩy là CỘNG (người dùng yêu cầu): "165,645" = 165k + 645k,
   "-165,645" = trừ cả hai; "1,5tr" vẫn là 1,5 triệu; số có đuôi ",000" ("1,200,000") vẫn là một số.
