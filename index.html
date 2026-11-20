@@ -670,9 +670,10 @@ $("list").addEventListener("click",e=>{
     if(!re&&!cfgB.account){e.preventDefault();openCfg();toast("Hãy nhập tài khoản gửi cho khách trước.");return}
     /* nhắn nhắc "Alo" không đổi giờ nhắn STK (msgAt) nên đơn không nhảy chỗ trong tab SMS */
     if(!re){o.msgSent=true;o.qrShown=false;o.msgAt=Date.now();saveOrders()}
-    lastMsg=re?REMIND:buildMsg(o,bankB());lastPhone=o.phone;
     const el=e.target.closest("a");if(el&&el.setAttribute)el.setAttribute("href",smsHref(o,re?REMIND:""));
-    toast("",true);doCopy();
+    /* app Tin nhắn mở sẵn nội dung nên không hiện thông báo (người dùng thấy phiền). Tin STK vẫn chép sẵn vào bộ nhớ
+       để dán nếu cần; chỉ khi chép lỗi mới hiện thông báo kèm nút "Sao chép lại". "Alo" thì không chép. */
+    if(!re){lastMsg=buildMsg(o,bankB());lastPhone=o.phone;doCopy(true)}
     setTimeout(render,400);
   }
   else if(a==="back"){o.msgSent=false;o.qrShown=false;saveOrders();render()}
@@ -1233,11 +1234,13 @@ function toast(txt,withCopy){
   $("toast").classList.remove("hidden");
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.add("hidden"),withCopy?20000:4000);
 }
-async function doCopy(){
-  try{await navigator.clipboard.writeText(lastMsg);$("toastTxt").textContent="✓ Đã sao chép tin nhắn cho "+lastPhone+". Nếu app Tin nhắn chưa mở, hãy mở và dán."}
-  catch(e){$("toastTxt").textContent="Giữ để chọn rồi sao chép:\n"+lastMsg}
+async function doCopy(quiet){
+  try{await navigator.clipboard.writeText(lastMsg);if(quiet!==true)toast("✓ Đã sao chép tin nhắn cho "+lastPhone+".")}
+  catch(e){toast("Nếu app Tin nhắn chưa mở: giữ để chọn rồi sao chép:\n"+lastMsg,true)}
 }
 $("toastCopy").onclick=doCopy;
+/* chạm vào thông báo để tắt */
+$("toastTxt").onclick=()=>$("toast").classList.add("hidden");
 
 /* xác nhận ck từ tin nhắn biến động số dư */
 $("confirm").onclick=()=>{
@@ -1288,7 +1291,8 @@ $("pasteIn").onclick=()=>pasteInto("paste",()=>{});
 $("pasteBank").onclick=()=>pasteInto("bankMsg",()=>$("confirm").onclick());
 $("bankMsg").addEventListener("paste",()=>setTimeout(()=>{if($("bankMsg").value.trim())$("confirm").onclick()},60));
 
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+/* rời app (mở Tin nhắn, ngân hàng…) thì tắt thông báo, quay lại không còn che màn hình */
+document.addEventListener("visibilitychange",()=>{if(document.hidden)$("toast").classList.add("hidden");else render()});
 /* đổi thứ tự đơn bằng nút mũi tên */
 /* đơn chưa thu lên đầu, đã thu xuống dưới (giữ thứ tự trong từng nhóm) */
 function tabIdx(){

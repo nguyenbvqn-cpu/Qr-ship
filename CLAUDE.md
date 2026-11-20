@@ -36,6 +36,9 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 - Tab dưới đáy: Mới / QR / SMS (đã ck/tổng) / TM (tiền mặt). Đơn chưa thu lên đầu; tab SMS: nhắn sau lên trên (cả chưa ck lẫn đã ck,
   theo `msgAt`), không có nút ▲▼. Nút "Nhắn lại" ở tab SMS chỉ nhắn "Alo" (`REMIND`, người dùng yêu cầu), không gửi
   lại STK, không cần tài khoản ở ⚙ và không đổi `msgAt` (đơn không nhảy chỗ).
+  Bấm nhắn tin KHÔNG hiện thông báo "Đã sao chép…" (người dùng thấy phiền, nó còn che màn hình khi quay lại): app Tin
+  nhắn đã mở sẵn nội dung. Tin STK vẫn chép lặng lẽ vào bộ nhớ; chỉ khi chép lỗi mới hiện thông báo + "Sao chép lại".
+  "Alo" không chép. Mọi thông báo tắt khi rời app (`visibilitychange` hidden) hoặc khi chạm vào nó.
 - Tab SMS: dán biến động số dư → khớp theo SĐT hoặc tên người chuyển (chữ IN HOA), rồi theo số tiền; trùng số tiền thì cho chọn.
 - Dán đơn trùng (SĐT hoặc nội dung) → hỏi xác nhận. Thu QR xong → về tab Mới.
 - 💰 Tiền: đếm số tờ 500k…5k đầu/cuối ngày. Được hưởng = (cuối − đầu) + mua đồ − nợ + số dư TK QR + số dư TK SMS
