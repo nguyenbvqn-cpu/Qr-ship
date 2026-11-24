@@ -20,6 +20,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   (đọc tin Zalo), bảng giá `CATALOG_DEFAULT`/`setCatalog`/`catalogLine`, `matchBank` (khớp tin biến động số dư),
   `buildMsg` (tin nhắn STK), `amountOf` (= hàng + ship + 1đ lẻ, dùng cho QR), `msgAmountOf` (= hàng + ship).
 - Phần còn lại: UI, localStorage, lịch sử, đồng bộ Supabase.
+- Thẻ đơn: ô nội dung (`.note.clamp`) hiện ~4 dòng rưỡi, vuốt trong ô để xem hết (người dùng yêu cầu, trước là cắt 2 dòng);
+  `noteText` bỏ SĐT và dòng chỉ còn nhãn "Sdt:". Nút QR / SMS / Tiền mặt chỉ có icon, không có chữ (người dùng yêu cầu).
 - Hiển thị tiền dùng `mk(v)` (dạng 100k, 3.965k; bỏ phần lẻ < 50đ). Chỉ màn hình QR cho khách hiện số chính xác.
 
 ## Nghiệp vụ (người dùng đã chốt)
