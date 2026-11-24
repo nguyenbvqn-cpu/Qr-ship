@@ -33,7 +33,8 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
     "20k ship" = ship 20k, nhưng "100k ship 25k" thì 100k là tiền hàng.
   - Không ghi giá thì tra bảng giá (sửa được trong ⚙), dòng trên ưu tiên trước:
     bé/nhỏ 55k · sốt me/me 55k · rút xương/trộn 65k · ớt xanh/cay 75k · lắc/cóc 55k · mắm 55k · to 100k · luộc/thảo quả 100k.
-- QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ.
+- QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ. Màn QR có ô thông tin đơn (`ovInfo`: hàng + ship,
+  nội dung đơn từ `noteText`) dưới dòng ngân hàng để đỡ nhầm đơn (người dùng yêu cầu); dài thì vuốt trong ô.
 - Tin nhắn STK (tài khoản thứ 2) dạng: `95k / STK / Ngân hàng / Tên / Noi dung : SĐT`, không cộng 1đ.
 - Tab dưới đáy: Mới / QR / SMS (đã ck/tổng) / TM (tiền mặt). Đơn chưa thu lên đầu; tab SMS: nhắn sau lên trên (cả chưa ck lẫn đã ck,
   theo `msgAt`), không có nút ▲▼. Nút "Nhắn lại" ở tab SMS chỉ nhắn "Alo" (`REMIND`, người dùng yêu cầu), không gửi

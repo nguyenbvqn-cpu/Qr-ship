@@ -82,6 +82,8 @@ button.tm{background:#fff0d6;color:#8a4b00;font-weight:600}
 #ov .amt{font-size:34px;font-weight:800;color:#0b7a43}
 #ov .content{font-size:20px;font-weight:700}
 #ov .bank{font-size:14px;color:#555;text-align:center}
+/* thông tin đơn dưới QR (người dùng yêu cầu, đỡ nhầm đơn); dài thì vuốt trong ô */
+#ov .info{width:100%;margin-top:10px;padding:8px 10px;background:#f7f8fa;border-radius:10px;font-size:15px;line-height:1.4;color:#333;white-space:pre-wrap;overflow-y:auto;min-height:0;flex:0 1 auto}
 #ov .nav{display:flex;gap:8px;width:100%;margin-top:auto;padding-top:8px}
 #ov .nav button{flex:1;padding:14px}
 #dupOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:26;display:flex;align-items:flex-end;justify-content:center}
@@ -225,6 +227,7 @@ if(!hasToken())document.documentElement.classList.add("locked");
   <div class="amt" id="ovAmt"></div>
   <div class="content" id="ovContent"></div>
   <div class="bank" id="ovBank"></div>
+  <div class="info" id="ovInfo"></div>
   <div class="nav">
     <button id="ovPrev">‹</button>
     <button id="ovPaid" class="primary">Đã nhận tiền ✓</button>
@@ -710,6 +713,9 @@ function showQr(id){
   $("ovAmt").textContent=fmt(amount)+"\u0111";
   $("ovContent").textContent="Nội dung: "+qrContent(o);
   $("ovBank").textContent=qa.name+" · "+qa.account;
+  const nt=noteText(o);
+  $("ovInfo").innerHTML="<b>Hàng "+mk(o.goods||0)+" + ship "+mk(o.ship||0)+"</b>"+(nt?"\n"+esc(nt):"");
+  $("ovInfo").scrollTop=0;
   $("ovPaid").textContent=o.paid?"Bỏ đã thu":"Đã nhận tiền ✓";
   $("ov").classList.remove("hidden");
 }
