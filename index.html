@@ -349,6 +349,16 @@ function catalogLine(line){
   }
   return sum;
 }
+/* không ghi số lượng lẫn giá: "Hộp to tới quán…" = 1 hộp to. Chỉ dùng khi cả đơn không đọc được đồng nào,
+   và phải có chữ hộp/hũ/suất… để "cho bé", "nhà to" ở địa chỉ không bị tính tiền */
+const BARE_RE=/(?<![\p{L}\p{M}])(?:hộp|hop|hũ|suất|suat|phần|túi|set)(?![\p{L}\p{M}])/iu;
+function bareItems(text){
+  let sum=0;
+  text.normalize("NFC").split("\n").forEach(line=>{
+    line.split(new RegExp(BARE_RE.source,"giu")).slice(1).forEach(seg=>{sum+=catalogPrice(seg.split(/[;+]/)[0])});
+  });
+  return sum;
+}
 function parseOrder(text,defShip){
   if(defShip===undefined)defShip=SHIP_DEF;
   let phone="",rest=text;
@@ -388,6 +398,7 @@ function parseOrder(text,defShip){
   if(goodsTotal===null&&total===null){
     let off=0;
     rest.split("\n").forEach(line=>{if(!priced.has(off))goods+=catalogLine(line);off+=line.length+1});
+    if(!goods)goods=bareItems(rest);
   }
   if(ship===0)ship=defShip;
   if(goodsTotal!==null)goods=goodsTotal;
