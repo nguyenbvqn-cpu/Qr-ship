@@ -858,6 +858,7 @@ function calcMoney(list,m){
   return{x,v,diff,net,smsDue,smsDueN:sw.length,balQ,balS};
 }
 function paintMoney(){
+  paintSum();  /* "Tiền mặt đang có" ở đầu bảng đổi theo số tờ, rút, mua đồ, nợ */
   const c0=calcMoney();$("denS").textContent=mk(c0.v.start);$("denE").textContent=mk(c0.v.end);
   const c=c0,R=(a,b,st)=>"<tr"+(st?' class="'+st+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>",sg=n=>(n<0?"−":"")+mk(Math.abs(n));
   const sub=t=>'<div class="muted" style="font-size:12px;font-weight:400">'+t+"</div>";
@@ -888,7 +889,7 @@ $("btnMoney").onclick=()=>{
   Object.keys(MF).forEach(k=>$(MF[k]).value=money[k]||"");
   document.querySelectorAll("[data-den]").forEach(el=>{const [side,d]=el.dataset.den.split(":");el.value=((money[side]||{})[d])||""});
   $("wdBox").classList.toggle("hidden",!(money.wq||money.ws));
-  paintSum();paintMoney();$("monOv").classList.remove("hidden");
+  paintMoney();$("monOv").classList.remove("hidden");
 };
 /* đóng 💰 thì vẽ lại danh sách (thẻ tab SMS có số dư TK SMS theo ô cộng/trừ, rút) */
 $("monClose").onclick=()=>{$("monOv").classList.add("hidden");render()};
@@ -1183,23 +1184,40 @@ function summary(list){
   const tot=g.qr.v+g.sms.v+g.tm.v,cnt=g.qr.n+g.sms.n+g.tm.n;
   return{g,due,ship,goods,tot,cnt};
 }
+/* tiền mặt đang có (người dùng yêu cầu): mỗi đơn đã bỏ tiền hàng ra trả trước, nên
+   = đầu ngày − tiền hàng MỌI đơn (cả đơn chưa thu) + tiền mặt thu được + rút − mua đồ + nợ
+   (khớp công thức Được hưởng: đếm cuối ngày đúng bằng số này thì Được hưởng = đã thu − tiền hàng) */
+function cashNow(list,m){
+  list=list||orders;m=m||money;
+  const v={};["debt","buy","wq","ws"].forEach(k=>v[k]=parseSigned(m[k]));
+  const start=denSum(m.cs),end=denSum(m.ce),goods=list.reduce((a,o)=>a+(o.goods||0),0),tm=summary(list).g.tm;
+  const wd=v.wq+v.ws,now=start-goods+tm.v+wd-v.buy+v.debt;
+  const parts="đầu ngày "+mk(start)+" − tiền hàng "+list.length+" đơn "+mk(goods)+" + thu tiền mặt "+tm.n+" đơn "+mk(tm.v)+
+    (wd?" "+sgn(wd)+" rút":"")+(v.buy?" "+sgn(-v.buy)+" mua đồ":"")+(v.debt?" "+sgn(v.debt)+" nợ":"");
+  return{start,end,goods,gn:list.length,tm,now,parts,diffTxt:end===now?"khớp":"chênh "+sgn(end-now)};
+}
 function sumText(x){
-  const td=today(),L=(a,b)=>a+": "+b;
+  const td=today(),L=(a,b)=>a+": "+b,c=cashNow(),sg=n=>(n<0?"−":"")+mk(Math.abs(n));
   return ["Tổng kết ngày "+(+td.slice(8))+"/"+(+td.slice(5,7))+"/"+td.slice(0,4),
+    L("TIỀN MẶT ĐANG CÓ",sg(c.now)+" ("+c.parts+")")].concat(denSum(money.ce)?[L("Đếm cuối ngày",mk(c.end)+" ("+c.diffTxt+")")]:[]).concat([
     L("QR ("+x.g.qr.n+" đơn)",mk(x.g.qr.v)),
     L("SMS ("+x.g.sms.n+" đơn)",mk(x.g.sms.v)),
-    L("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v)),
+    L("Thu tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v)),
     L("TỔNG ĐÃ THU ("+x.cnt+" đơn)",mk(x.tot)),
     L("Trong đó tiền hàng",mk(x.goods)),
-    L("Tiền ship",mk(x.ship)+(x.due.ship?" + "+mk(x.due.ship)+" chưa thu":""))].concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",mk(x.due.v))]:[]).join("\n");
+    L("Tiền ship",mk(x.ship)+(x.due.ship?" + "+mk(x.due.ship)+" chưa thu":""))]).concat(x.due.n?[L("Chưa thu ("+x.due.n+" đơn)",mk(x.due.v))]:[]).join("\n");
 }
 /* phần tổng kết nằm đầu bảng 💰 (gộp 📊 Tổng vào 💰 Tiền) */
 function paintSum(){
   const x=summary(),R=(a,b,c)=>'<tr'+(c?' class="'+c+'"':"")+"><td>"+a+"</td><td>"+b+"</td></tr>";
-  $("sumBody").innerHTML='<table class="sumt">'+
+  const c=cashNow(),sg=n=>(n<0?"−":"")+mk(Math.abs(n)),sub=t=>'<div class="muted" style="font-size:12px;font-weight:400">'+t+"</div>";
+  $("sumBody").innerHTML='<table class="sumt cash">'+
+    R("💵 Tiền mặt đang có"+sub(c.parts),sg(c.now),"big")+
+    (denSum(money.ce)?R("Đếm cuối ngày"+sub(c.diffTxt+" so với tiền mặt đang có"),mk(c.end)):"")+
+    "</table>"+'<table class="sumt">'+
     R("QR ("+x.g.qr.n+" đơn)",mk(x.g.qr.v))+
     R("SMS ("+x.g.sms.n+" đơn)",mk(x.g.sms.v))+
-    R("Tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v))+
+    R("Thu tiền mặt ("+x.g.tm.n+" đơn)",mk(x.g.tm.v))+
     R("Tổng đã thu ("+x.cnt+" đơn)",mk(x.tot),"big")+
     "</table>"+'<table class="sumt">'+
     R("Trong đó tiền hàng",mk(x.goods))+

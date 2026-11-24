@@ -61,6 +61,10 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   Chỗ khác (tiền hàng trong đơn, `parseMoney`) vẫn coi "165,645" là 165.645đ.
   Không cần "chốt số": đầu ngày tự lấy số tờ cuối ngày của ngày gần nhất trước đó có đếm (`carryStart`, cờ `csFrom`),
   tự cập nhật nếu sửa cuối ngày hôm trước, cho tới khi người dùng tự sửa cột đầu ngày (`csManual`).
+- 💰 dòng đầu tiên "💵 Tiền mặt đang có" (`cashNow`, người dùng yêu cầu: dòng "Tiền mặt (n đơn)" cộng đơn đã thu là sai
+  với họ) = đầu ngày − tiền hàng MỌI đơn trong ngày (shipper trả tiền hàng trước, kể cả đơn chưa thu) + thu tiền mặt
+  + rút − mua đồ + nợ. Có đếm cuối ngày thì thêm dòng "Đếm cuối ngày … chênh ±x / khớp". Dòng cũ đổi tên "Thu tiền mặt
+  (n đơn)" (vẫn cộng vào Tổng đã thu). `paintMoney` gọi `paintSum` để dòng này đổi ngay khi gõ số tờ, rút, mua đồ, nợ.
 - 💰 "Tổng tiền" gộp cả bảng tổng (người dùng yêu cầu, bỏ nút 📊 riêng): đầu bảng là tổng kết (`paintSum`: QR/SMS/TM,
   tiền hàng, ship + ship chưa thu, chưa thu), dưới là "Tiền được hưởng" (đếm tờ, nợ, mua đồ…). 2 nút sao chép: tổng / tiền.
 - 📅 chỉ còn bảng tiền ship theo tháng (`paintShip`; bảng "Theo ngày" người dùng thấy thừa nên đã bỏ): Ngày | Đơn |
