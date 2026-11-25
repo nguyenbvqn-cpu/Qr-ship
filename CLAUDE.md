@@ -101,6 +101,12 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
   tài khoản được. Muốn thêm máy/người khác dùng chung thì phải bật lại tạm thời.
 
 ## Cách kiểm tra
-- Không có test tự động. Cách đã dùng: tách khối CORE chạy bằng Node để thử `parseOrder`/`matchBank`/`buildVietQR`
-  với các tin mẫu thật; giả lập DOM tối thiểu để bấm thử luồng UI. Chạy `node --check` cho phần script trước khi push.
+- Bài thử ở `tests/` (người dùng yêu cầu lưu lên trước khi cài lại Windows): `node tests/run-all.js` chạy hết,
+  `node tests/test-parse.js index.html` chạy một bài. Mỗi bài đọc index.html, chạy mọi `<script>` trong `vm` với DOM giả
+  (phần tử chỉ được tạo khi gọi `$()`), rồi in OK/FAIL. Chỉ cần Node.js, không cần cài gói nào.
+  Sửa tính năng nào thì cập nhật/thêm bài thử tương ứng; chạy `node --check` cho phần script trước khi push.
+- Dữ liệu trong bài thử phải là dữ liệu giả: SĐT dạng 0900000001 / 0911111111, số TK "1234", địa chỉ bịa.
+  Repo công khai (GitHub Pages phục vụ cả thư mục `tests/`), nên không chép SĐT, địa chỉ, tên khách hay số TK thật vào.
+- Xem thử giao diện: `node tests/serve.js` mở http://127.0.0.1:8765 (không đăng ký service worker), rồi ẩn màn khóa
+  bằng CSS `#lock{display:none!important}` và bỏ class `locked` ở thẻ html.
 - Không dùng `alert/confirm/prompt`: tự làm hộp thoại trong trang.
