@@ -47,4 +47,10 @@ G("0900000001\n1 ot xanh", 75000, "9. '1 ot xanh' = 75k");
 G("0900000001\n1 hộp to gần cây xăng", 100000, "10. 'cây' có dấu không bị hiểu là 'cay' (vẫn hộp to 100k)");
 G("0900000001\n1 hộp to giao cho mẹ", 100000, "10. 'mẹ' không bị hiểu là 'me'");
 G("0900000001\n1 hộp to tới bè", 100000, "10. 'bè' không bị hiểu là 'bé'");
+// "m" gõ nhầm của "k"
+G("12 - Phố A\n0900000001\n1 luộc 55m\n1 trộn 65k", 120000, "11. '1 luộc 55m' = 55k (trước ra luộc 100k theo bảng giá) + trộn 65k = 120k");
+G("0900000001\n1 luộc 55m\n1 trộn 65k\nĐơn này phải là 120k tiền đồ", 120000, "11. có dòng 'Đơn này … 120k tiền đồ' vẫn 120k");
+G("0900000001\n2 bé 55m", 110000, "11. '2 bé 55m' = 2 × 55k");
+G("0900000001\n1 hộp to\nĐi thẳng 50m rẽ trái", 100000, "11. '50m' trong địa chỉ không tính tiền");
+G("0900000001\n1 hộp to, nhà cách 50m", 100000, "11. '1 hộp to, nhà cách 50m': 50m không phải giá");
 console.log(fail ? fail + " lỗi" : "Tất cả OK"); process.exit(fail ? 1 : 0);

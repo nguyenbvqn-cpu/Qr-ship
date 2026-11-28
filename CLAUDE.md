@@ -27,6 +27,7 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
 ## Nghiệp vụ (người dùng đã chốt)
 - Đơn dán từ Zalo: lấy SĐT, tiền hàng, ship (mặc định 20k, nút −/+ bước 5k).
   - "10 luộc 100k" = 10 × 100k; "đơn này / tiền đồ là 165k" = tổng tiền hàng; "65l" là gõ nhầm "65k";
+    "1 luộc 55m" cũng là gõ nhầm "55k" (chỉ ở dòng số lượng, cuối dòng, để "cách 50m" trong địa chỉ không thành tiền);
     giá không ghi k trên dòng số lượng ("1 trộn 65") hiểu là nghìn.
   - "ck/thu/cod 150k" = tổng tiền khách trả (hàng = tổng − ship). Các từ này chỉ tính khi đứng riêng; không dùng `\b`
     trong regex vì JS coi chữ có dấu là ranh giới ("1 luôck 100k" từng bị hiểu là "ck 100k").

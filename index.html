@@ -370,7 +370,7 @@ function parseOrder(text,defShip){
   let phone="",rest=text;
   const m=text.match(PHONE_RE);
   if(m){let d=m[0].replace(/\D/g,"");if(d.startsWith("84"))d="0"+d.slice(2);phone=d;rest=text.replace(m[0]," ")}
-  const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|l|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
+  const re=/(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(k|l|m|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|đ|d|vnđ|vnd|₫)?(?![A-Za-zÀ-ỹ0-9])/gi;
   let goods=0,ship=0,total=null,goodsTotal=null,lastEnd=0,mm;const priced=new Set();
   while((mm=re.exec(rest))){
     const raw=mm[1],unit=(mm[2]||"").toLowerCase();
@@ -389,6 +389,9 @@ function parseOrder(text,defShip){
     const qtyLine=/^\s*(\d{1,2})\s+\D*$/.test(seg0);
     // "ck", "thu", "cod", "hết" phải đứng riêng (\b của JS coi chữ có dấu là ranh giới: "luôck" sẽ khớp nhầm "ck")
     const kw=/tổng|tong|đơn này|don nay|đơn là|tiền đồ|tien do|tiền hàng|tien hang|ship|(?<![\p{L}\d])(?:ck|thu)(?![\p{L}\d])/iu.test(before);
+    // "1 luộc 55m": "m" là gõ nhầm của "k" (cạnh nhau trên bàn phím), chỉ tính ở dòng số lượng và cuối dòng,
+    // để "cách 50m" trong địa chỉ không bị tính tiền
+    if(unit==="m"){if(qtyLine&&!thou&&v>=5&&v<1000&&/^\s*$/.test(after))v*=1000;else continue}
     if(!unit&&!thou&&v>=5&&v<1000&&!/^\s*[\/\-]/.test(after)&&/^\s*$/.test(after)&&(qtyLine||kw))v*=1000; // giá không ghi k
     if(v<1000||v>1e8)continue;
     // "20k ship" = ship 20k; nhưng "100k ship 25k" thì 100k là tiền hàng
