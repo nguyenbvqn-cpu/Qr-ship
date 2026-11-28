@@ -39,6 +39,10 @@ Người dùng nói tiếng Việt, dùng chủ yếu trên điện thoại Andr
     để "cho bé", "nhà to" trong địa chỉ không bị tính tiền.
   - Khách gõ thiếu dấu: chữ không dấu khớp món đã bỏ dấu ("thảo quả nho" = nhỏ 55k, "1 tron" = trộn) qua `plainVN`/`plainWords`
     (`rp` trong `CATALOG`). Chỉ chữ hoàn toàn không dấu mới so kiểu bỏ dấu, nên "bè", "cây", "mẹ" không thành "bé", "cay", "me".
+- Đơn không có SĐT vẫn tạo được (người dùng yêu cầu) nhưng KHÔNG tạo QR (nội dung CK cần SĐT): nút QR và SMS mờ
+  (`.ic.off`), bấm thì báo; lướt QR (`ovIds`) bỏ qua đơn không SĐT; thu tiền mặt vẫn được. Nhập SĐT ở ⋯ là sáng lại.
+  Dán nhiều đơn (≥2 SĐT, cách dòng trống, `splitMessages`): đoạn không SĐT không bị bỏ nữa — có tiền hàng riêng thì
+  thành đơn không SĐT (trừ khi đoạn trước chưa có tiền hàng: khách gửi SĐT 1 tin, món 1 tin), không có thì gộp vào đoạn trước.
 - QR: VietQR, nội dung `QR chan ga - <SĐT>`, số tiền = hàng + ship + 1đ. Màn QR có ô thông tin đơn (`ovInfo`: hàng + ship,
   nội dung đơn từ `noteText`) dưới dòng ngân hàng để đỡ nhầm đơn (người dùng yêu cầu); dài thì vuốt trong ô.
 - Tin nhắn STK (tài khoản thứ 2) dạng: `95k / STK / Ngân hàng / Tên / Noi dung : SĐT`, không cộng 1đ.
